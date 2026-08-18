@@ -1,0 +1,85 @@
+# satchecker-client is pure Python and imports only the standard library plus
+# pandas (and numpy on one line, see below), so there is nothing to compile.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["satchecker_client"]
+
+# The sdist needs the tests: they are the only thing that exercises the response
+# normalisation against recorded SatChecker payloads, and a downstream packager
+# rebuilding from sdist should be able to run them.
+[tool.hatch.build.targets.sdist]
+include = ["satchecker_client/", "tests/", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.hatch.version]
+path = "satchecker_client/_version.py"
+
+# ── Project metadata ───────────────────────────────────────────────────────────
+
+[project]
+name = "satchecker-client"
+dynamic = ["version"]
+license = {file = "LICENSE"}
+readme = "README.md"
+authors = [
+  {name = "Chris Finlay", email = "christopher.finlay@epfl.ch"},
+]
+maintainers = [
+  {name = "Chris Finlay", email = "christopher.finlay@epfl.ch"}
+]
+description = "Client for the IAU CPS SatChecker satellite orbital-record service."
+keywords = ["satellite", "TLE", "OMM", "orbit", "radio-astronomy", "SatChecker"]
+
+# Matches the floor of the consuming packages (tabascal, tab-sim). Nothing here
+# needs a newer interpreter; raise it only when they do.
+requires-python = ">=3.10"
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+dependencies = [
+    # The public API returns DataFrames with a normalised column set, and the
+    # cache round-trips through them. Removing this is the larger of the two
+    # dependency-shedding jobs: it touches cache.py, client.py and service.py.
+    "pandas",
+    # Used on exactly one line -- the finiteness check over NORAD IDs in
+    # client.py::_normalise_ids. Cheapest of the two to drop.
+    "numpy",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+
+[project.urls]
+Repository = "https://github.com/epfl-radio-astro/satchecker-client"
+Issues = "https://github.com/epfl-radio-astro/satchecker-client/issues"
+"SatChecker service" = "https://satchecker.cps.iau.org/"
+
+# ── Pytest ─────────────────────────────────────────────────────────────────────
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "--cov=satchecker_client --cov-report=term-missing"
+
+# ── Coverage ───────────────────────────────────────────────────────────────────
+
+[tool.coverage.run]
+source = ["satchecker_client"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
