@@ -85,8 +85,9 @@ runs offline and never touches the live service.
 
 ## Licence
 
-GPL-3.0-or-later — see [LICENSE](LICENSE). Extracted from
-[TABASCAL][tabascal], which carries the same licence.
+MIT — see [LICENSE](LICENSE). Extracted from [TABASCAL][tabascal], which is
+GPL-3.0; this client is relicensed by its copyright holder so that a thin API
+client is not the thing that constrains what it can be built into.
 
 [satchecker]: https://satchecker.cps.iau.org/
 [upstream]: https://github.com/iausathub/satchecker
