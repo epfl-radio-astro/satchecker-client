@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>satchecker_client.records &mdash; satchecker-client 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            satchecker-client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#identify-your-application">Identify your application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#two-archives-one-handover">Two archives, one handover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#fetching-records">Fetching records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage.html#batches">Batches</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#asking-about-a-record">Asking about a record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage.html#what-validation-guarantees-per-kind">What validation guarantees, per kind</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#what-stays-with-the-caller">What stays with the caller</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client">Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.client">Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.HANDOVER_JD"><code class="docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerError"><code class="docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerRateLimitError"><code class="docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerResponseError"><code class="docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerTransportError"><code class="docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.fetch_nearest_omm"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.fetch_nearest_tle"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.set_client_identifier"><code class="docutils literal notranslate"><span class="pre">set_client_identifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.user_agent"><code class="docutils literal notranslate"><span class="pre">user_agent()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.service">Service</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.NearestBatchResult"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.service.NearestBatchResult.outage"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult.outage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.RESPONSE_WALL_THRESHOLD"><code class="docutils literal notranslate"><span class="pre">RESPONSE_WALL_THRESHOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.fetch_nearest_batch"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.nearest_endpoints_for"><code class="docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.store_or_warn"><code class="docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.validated_records"><code class="docutils literal notranslate"><span class="pre">validated_records()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.records">Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.COMMON_COLUMNS"><code class="docutils literal notranslate"><span class="pre">COMMON_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.KIND_FIELD"><code class="docutils literal notranslate"><span class="pre">KIND_FIELD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.OMM_ELEMENT_COLUMNS"><code class="docutils literal notranslate"><span class="pre">OMM_ELEMENT_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.RecordKindError"><code class="docutils literal notranslate"><span class="pre">RecordKindError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.TLE_LINE_COLUMNS"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.norad_id_of"><code class="docutils literal notranslate"><span class="pre">norad_id_of()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.parse_omm_epoch_jd"><code class="docutils literal notranslate"><span class="pre">parse_omm_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_elements"><code class="docutils literal notranslate"><span class="pre">record_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_epoch_jd"><code class="docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_kind"><code class="docutils literal notranslate"><span class="pre">record_kind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.validate_record"><code class="docutils literal notranslate"><span class="pre">validate_record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.tle_parse">TLE parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.ELEMENT_FIELDS"><code class="docutils literal notranslate"><span class="pre">ELEMENT_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.TLE_LINE_LENGTH"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_LENGTH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.decode_norad_id"><code class="docutils literal notranslate"><span class="pre">decode_norad_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.parse_tle_elements"><code class="docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.semimajor_axis_km"><code class="docutils literal notranslate"><span class="pre">semimajor_axis_km()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.tle_checksum"><code class="docutils literal notranslate"><span class="pre">tle_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.tle_epoch_jd"><code class="docutils literal notranslate"><span class="pre">tle_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_elements"><code class="docutils literal notranslate"><span class="pre">validate_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_tle_line"><code class="docutils literal notranslate"><span class="pre">validate_tle_line()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_tle_pair"><code class="docutils literal notranslate"><span class="pre">validate_tle_pair()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.CacheValidationError"><code class="docutils literal notranslate"><span class="pre">CacheValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.REQUIRED_COLUMNS"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.SCHEMA_VERSION"><code class="docutils literal notranslate"><span class="pre">SCHEMA_VERSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache.get"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache.store"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.read_legacy_tle_records"><code class="docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../readthedocs.html">Publishing the Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#versions">Versions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../readthedocs.html#publishing-a-release-version">Publishing a release version</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#one-time-project-setup">One-time project setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#building-the-docs-locally">Building the docs locally</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">satchecker-client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">satchecker_client.records</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for satchecker_client.records</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Kind dispatch over the two orbital-record formats SatChecker serves.</span>
+
+<span class="sd">SatChecker's TLE archive is frozen and its OMM archive starts where the TLE one</span>
+<span class="sd">stops (see :mod:`satchecker_client.client` for the handover date), so any caller</span>
+<span class="sd">spanning the handover has to carry both formats at once. Rather than thread a format flag through the</span>
+<span class="sd">policy layer, records stay plain ``dict``-alikes and everything format-specific</span>
+<span class="sd">is answered here:</span>
+
+<span class="sd">``record_kind``</span>
+<span class="sd">    Which format a record is in.</span>
+<span class="sd">``record_epoch_jd``</span>
+<span class="sd">    Its epoch as a UTC Julian Date — the number every age policy is measured</span>
+<span class="sd">    against.</span>
+<span class="sd">``record_elements``</span>
+<span class="sd">    Its OMM-style orbital elements, in the units the trajectory components</span>
+<span class="sd">    expect.</span>
+<span class="sd">``validate_record``</span>
+<span class="sd">    Whether it is usable at all, returning the NORAD catalogue ID it belongs to.</span>
+
+<span class="sd">Everything above the seams — source precedence, the age ceiling, the</span>
+<span class="sd">strictly-fresher incumbency rule — works off ``epoch_jd`` and an opaque record,</span>
+<span class="sd">and does not change.</span>
+
+<span class="sd">Validation is not symmetric between the two kinds, and pretending otherwise</span>
+<span class="sd">would be the dangerous move. A TLE carries a modulo-10 checksum over each line</span>
+<span class="sd">and a second copy of the satellite identifier, so single-character corruption is</span>
+<span class="sd">detectable and a record can be caught belonging to a different satellite than</span>
+<span class="sd">the row claims. OMM has neither: one ``NORAD_CAT_ID`` field with nothing to</span>
+<span class="sd">check it against, and element values that parse cleanly whatever they say.</span>
+<span class="sd">There is a third loss too — :func:`satchecker_client.tle_parse.tle_epoch_jd`</span>
+<span class="sd">exists so a provider's own epoch field is never trusted, and for OMM there are</span>
+<span class="sd">no lines to re-derive it from.</span>
+
+<span class="sd">What is done instead, for OMM only: every element goes through the shared</span>
+<span class="sd">:func:`~satchecker_client.tle_parse.validate_elements` range and finiteness</span>
+<span class="sd">checks, and the epoch must parse as ISO 8601 and land inside an absolute</span>
+<span class="sd">plausibility window. That window is not cosmetic. ``get-nearest-omm`` answers a</span>
+<span class="sd">pre-handover request with its *earliest* record rather than reporting that it</span>
+<span class="sd">has none, so a wrong epoch is exactly the failure this format is prone to.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._time</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime_to_jd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.tle_parse</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ELEMENT_FIELDS</span><span class="p">,</span>
+    <span class="n">parse_tle_elements</span><span class="p">,</span>
+    <span class="n">semimajor_axis_km</span><span class="p">,</span>
+    <span class="n">tle_epoch_jd</span><span class="p">,</span>
+    <span class="n">validate_elements</span><span class="p">,</span>
+    <span class="n">validate_tle_pair</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">KIND_TLE</span> <span class="o">=</span> <span class="s2">"tle"</span>
+<span class="n">KIND_OMM</span> <span class="o">=</span> <span class="s2">"omm"</span>
+
+<span class="c1">#: Column naming the format explicitly. Optional — see :func:`record_kind`.</span>
+<span class="n">KIND_FIELD</span> <span class="o">=</span> <span class="s2">"RECORD_KIND"</span>
+
+<span class="c1">#: The two lines that make a TLE record.</span>
+<span class="n">TLE_LINE_COLUMNS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE_LINE2"</span><span class="p">)</span>
+
+<span class="c1">#: Element columns an OMM record carries directly, rather than encoding in lines.</span>
+<span class="n">OMM_ELEMENT_COLUMNS</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ELEMENT_FIELDS</span><span class="p">)</span>
+
+<span class="c1">#: Identity and provenance columns both kinds carry.</span>
+<span class="n">COMMON_COLUMNS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span> <span class="s2">"OBJECT_NAME"</span><span class="p">,</span> <span class="s2">"DATA_SOURCE"</span><span class="p">,</span> <span class="s2">"DATE_COLLECTED"</span><span class="p">)</span>
+
+<span class="c1">#: Sputnik 1. Nothing with an earlier epoch is a real orbital element set.</span>
+<span class="n">_EARLIEST_PLAUSIBLE_EPOCH_JD</span> <span class="o">=</span> <span class="n">datetime_to_jd</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">1957</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+<span class="c1">#: How far past *now* an epoch may sit before it is treated as wrong rather than</span>
+<span class="c1">#: predicted. Propagated element sets are published slightly ahead of time; a</span>
+<span class="c1">#: year ahead is not that.</span>
+<span class="n">_FUTURE_EPOCH_TOLERANCE_DAYS</span> <span class="o">=</span> <span class="mf">366.0</span>
+
+
+<div class="viewcode-block" id="RecordKindError">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.RecordKindError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RecordKindError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A record's format could not be determined, or is not one we handle."""</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Field presence</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_missing</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""True for the several ways a column can be absent in these frames.</span>
+
+<span class="sd">    Records arrive from JSON (``None``), from pandas (``nan`` in an object</span>
+<span class="sd">    column, from a concat that widened the columns), and from user files, so</span>
+<span class="sd">    "the column exists" is not the same question as "the column has a value".</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="n">value</span><span class="p">:</span>  <span class="c1"># NaN</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_has</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="ow">not</span> <span class="n">_missing</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">column</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_has</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">column</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2"> is missing </span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">record</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Kind</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="record_kind">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.record_kind">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_kind</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Which format *record* is in.</span>
+
+<span class="sd">    An explicit ``RECORD_KIND`` wins. Inferring the rest is not a nicety: the</span>
+<span class="sd">    documented ``extra_orbit_dir`` contract is that a Space-Track ``gp`` /</span>
+<span class="sd">    ``gp_history`` JSON export can be dropped in unconverted, and that JSON</span>
+<span class="sd">    carries no kind field. So a record with TLE lines is a TLE, a record with</span>
+<span class="sd">    the element columns is an OMM, and anything else is rejected rather than</span>
+<span class="sd">    guessed at.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">_has</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">KIND_FIELD</span><span class="p">):</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="n">KIND_FIELD</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">KIND_TLE</span><span class="p">,</span> <span class="n">KIND_OMM</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">RecordKindError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown </span><span class="si">{</span><span class="n">KIND_FIELD</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">record</span><span class="p">[</span><span class="n">KIND_FIELD</span><span class="p">]</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">kind</span>
+    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">_has</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">TLE_LINE_COLUMNS</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">KIND_TLE</span>
+    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">_has</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">KIND_OMM</span>
+    <span class="k">raise</span> <span class="n">RecordKindError</span><span class="p">(</span>
+        <span class="s2">"record carries neither TLE lines nor a complete set of OMM element "</span>
+        <span class="sa">f</span><span class="s2">"columns, and no </span><span class="si">{</span><span class="n">KIND_FIELD</span><span class="si">}</span><span class="s2"> field to say which it is"</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Epoch</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="parse_omm_epoch_jd">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.parse_omm_epoch_jd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_omm_epoch_jd</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""UTC Julian Date of an OMM ``EPOCH`` field.</span>
+
+<span class="sd">    ISO 8601, with or without a trailing ``Z`` or a UTC offset. The absolute</span>
+<span class="sd">    plausibility window is checked here rather than at the call site so no path</span>
+<span class="sd">    can reach the age policy with an epoch that is not a date at all.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="p">):</span>
+        <span class="n">stamp</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">text</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"OMM epoch is empty"</span><span class="p">)</span>
+        <span class="c1"># Python 3.10's fromisoformat does not accept the military 'Z' suffix.</span>
+        <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">"Z"</span><span class="p">,</span> <span class="s2">"z"</span><span class="p">)):</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"+00:00"</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OMM epoch is not ISO 8601: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="n">epoch_jd</span> <span class="o">=</span> <span class="n">datetime_to_jd</span><span class="p">(</span><span class="n">stamp</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">epoch_jd</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"OMM epoch is not finite: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">latest</span> <span class="o">=</span> <span class="n">datetime_to_jd</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span> <span class="o">+</span> <span class="n">_FUTURE_EPOCH_TOLERANCE_DAYS</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_EARLIEST_PLAUSIBLE_EPOCH_JD</span> <span class="o">&lt;=</span> <span class="n">epoch_jd</span> <span class="o">&lt;=</span> <span class="n">latest</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"OMM epoch </span><span class="si">{</span><span class="n">stamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2"> is outside the plausible window "</span>
+            <span class="sa">f</span><span class="s2">"(1957-01-01 to </span><span class="si">{</span><span class="n">_FUTURE_EPOCH_TOLERANCE_DAYS</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> days from now)"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">epoch_jd</span></div>
+
+
+
+<div class="viewcode-block" id="record_epoch_jd">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.record_epoch_jd">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_epoch_jd</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""UTC Julian Date of *record*'s epoch, whichever kind it is.</span>
+
+<span class="sd">    For a TLE this re-derives the epoch from line 1 rather than reading any</span>
+<span class="sd">    ``EPOCH`` column that happens to be present — that is deliberate and</span>
+<span class="sd">    long-standing. For an OMM there is nothing to re-derive it from, so the</span>
+<span class="sd">    provider's field is parsed and range-checked instead.</span>
+<span class="sd">    """</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">record_kind</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">KIND_TLE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tle_epoch_jd</span><span class="p">(</span><span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE record"</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">parse_omm_epoch_jd</span><span class="p">(</span><span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"EPOCH"</span><span class="p">,</span> <span class="s2">"OMM record"</span><span class="p">))</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Elements</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="record_elements">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.record_elements">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_elements</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""OMM-style orbital elements for *record*, in the components' units.</span>
+
+<span class="sd">    Angles in degrees, mean motion in rev/day, semi-major axis in km. Both kinds</span>
+<span class="sd">    return the same keys in the same order, and both derive ``SEMIMAJOR_AXIS``</span>
+<span class="sd">    from the mean motion rather than taking a provider's own value, so the two</span>
+<span class="sd">    paths cannot disagree on a satellite they both describe.</span>
+<span class="sd">    """</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">record_kind</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">KIND_TLE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">parse_tle_elements</span><span class="p">(</span>
+            <span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE record"</span><span class="p">),</span>
+            <span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"TLE_LINE2"</span><span class="p">,</span> <span class="s2">"TLE record"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">column</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">column</span><span class="p">,</span> <span class="s2">"OMM record"</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">OMM_ELEMENT_COLUMNS</span>
+    <span class="p">}</span>
+    <span class="n">validate_elements</span><span class="p">(</span><span class="n">elements</span><span class="p">,</span> <span class="s2">"OMM"</span><span class="p">)</span>
+    <span class="n">elements</span><span class="p">[</span><span class="s2">"SEMIMAJOR_AXIS"</span><span class="p">]</span> <span class="o">=</span> <span class="n">semimajor_axis_km</span><span class="p">(</span><span class="n">elements</span><span class="p">[</span><span class="s2">"MEAN_MOTION"</span><span class="p">])</span>
+    <span class="n">elements</span><span class="p">[</span><span class="s2">"EPOCH_JD"</span><span class="p">]</span> <span class="o">=</span> <span class="n">parse_omm_epoch_jd</span><span class="p">(</span><span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"EPOCH"</span><span class="p">,</span> <span class="s2">"OMM record"</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">elements</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Validation</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="norad_id_of">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.norad_id_of">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">norad_id_of</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"record"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The record's own ``NORAD_CAT_ID``, as a positive finite integer.</span>
+
+<span class="sd">    A fractional ID would truncate to a *different* satellite and an infinity</span>
+<span class="sd">    raises inside the numeric casts downstream, so both are rejected here.</span>
+<span class="sd">    """</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2"> has a non-numeric NORAD_CAT_ID </span><span class="si">{</span><span class="n">raw</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2"> has a non-finite NORAD_CAT_ID </span><span class="si">{</span><span class="n">raw</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="o">!=</span> <span class="nb">round</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2"> has a non-integer NORAD_CAT_ID </span><span class="si">{</span><span class="n">raw</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">value</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="validate_record">
+<a class="viewcode-back" href="../../api.html#satchecker_client.records.validate_record">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_record</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Fully validate *record*; return the NORAD catalogue ID it belongs to.</span>
+
+<span class="sd">    For a TLE the returned ID is decoded from the *lines*, so a caller comparing</span>
+<span class="sd">    it against the row's own ``NORAD_CAT_ID`` catches a record filed under the</span>
+<span class="sd">    wrong satellite. For an OMM there is only one identifier in the record, so</span>
+<span class="sd">    the same comparison is vacuous — the check does not exist to be made. That</span>
+<span class="sd">    asymmetry is real and is documented rather than papered over; callers make</span>
+<span class="sd">    the comparison unconditionally because it costs nothing and is meaningful</span>
+<span class="sd">    for exactly the kind that can support it.</span>
+
+<span class="sd">    Raises ``ValueError`` on any problem, which callers treat as "reject this</span>
+<span class="sd">    record and try another source".</span>
+<span class="sd">    """</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">record_kind</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">==</span> <span class="n">KIND_TLE</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">validate_tle_pair</span><span class="p">(</span>
+            <span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE record"</span><span class="p">),</span>
+            <span class="n">_get</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"TLE_LINE2"</span><span class="p">,</span> <span class="s2">"TLE record"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="n">norad_id</span> <span class="o">=</span> <span class="n">norad_id_of</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s2">"OMM record"</span><span class="p">)</span>
+    <span class="n">record_elements</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>  <span class="c1"># runs validate_elements and the epoch window</span>
+    <span class="k">return</span> <span class="n">norad_id</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025-2026, Chris Finlay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

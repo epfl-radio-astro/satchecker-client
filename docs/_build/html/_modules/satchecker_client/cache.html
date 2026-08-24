@@ -1,0 +1,511 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>satchecker_client.cache &mdash; satchecker-client 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            satchecker-client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#identify-your-application">Identify your application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#two-archives-one-handover">Two archives, one handover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#fetching-records">Fetching records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage.html#batches">Batches</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#asking-about-a-record">Asking about a record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage.html#what-validation-guarantees-per-kind">What validation guarantees, per kind</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#what-stays-with-the-caller">What stays with the caller</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client">Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.client">Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.HANDOVER_JD"><code class="docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerError"><code class="docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerRateLimitError"><code class="docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerResponseError"><code class="docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerTransportError"><code class="docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.fetch_nearest_omm"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.fetch_nearest_tle"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.set_client_identifier"><code class="docutils literal notranslate"><span class="pre">set_client_identifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.user_agent"><code class="docutils literal notranslate"><span class="pre">user_agent()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.service">Service</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.NearestBatchResult"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.service.NearestBatchResult.outage"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult.outage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.RESPONSE_WALL_THRESHOLD"><code class="docutils literal notranslate"><span class="pre">RESPONSE_WALL_THRESHOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.fetch_nearest_batch"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.nearest_endpoints_for"><code class="docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.store_or_warn"><code class="docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.validated_records"><code class="docutils literal notranslate"><span class="pre">validated_records()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.records">Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.COMMON_COLUMNS"><code class="docutils literal notranslate"><span class="pre">COMMON_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.KIND_FIELD"><code class="docutils literal notranslate"><span class="pre">KIND_FIELD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.OMM_ELEMENT_COLUMNS"><code class="docutils literal notranslate"><span class="pre">OMM_ELEMENT_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.RecordKindError"><code class="docutils literal notranslate"><span class="pre">RecordKindError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.TLE_LINE_COLUMNS"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.norad_id_of"><code class="docutils literal notranslate"><span class="pre">norad_id_of()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.parse_omm_epoch_jd"><code class="docutils literal notranslate"><span class="pre">parse_omm_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_elements"><code class="docutils literal notranslate"><span class="pre">record_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_epoch_jd"><code class="docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_kind"><code class="docutils literal notranslate"><span class="pre">record_kind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.validate_record"><code class="docutils literal notranslate"><span class="pre">validate_record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.tle_parse">TLE parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.ELEMENT_FIELDS"><code class="docutils literal notranslate"><span class="pre">ELEMENT_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.TLE_LINE_LENGTH"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_LENGTH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.decode_norad_id"><code class="docutils literal notranslate"><span class="pre">decode_norad_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.parse_tle_elements"><code class="docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.semimajor_axis_km"><code class="docutils literal notranslate"><span class="pre">semimajor_axis_km()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.tle_checksum"><code class="docutils literal notranslate"><span class="pre">tle_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.tle_epoch_jd"><code class="docutils literal notranslate"><span class="pre">tle_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_elements"><code class="docutils literal notranslate"><span class="pre">validate_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_tle_line"><code class="docutils literal notranslate"><span class="pre">validate_tle_line()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_tle_pair"><code class="docutils literal notranslate"><span class="pre">validate_tle_pair()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.CacheValidationError"><code class="docutils literal notranslate"><span class="pre">CacheValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.REQUIRED_COLUMNS"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.SCHEMA_VERSION"><code class="docutils literal notranslate"><span class="pre">SCHEMA_VERSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache.get"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache.store"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.read_legacy_tle_records"><code class="docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../readthedocs.html">Publishing the Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#versions">Versions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../readthedocs.html#publishing-a-release-version">Publishing a release version</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#one-time-project-setup">One-time project setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#building-the-docs-locally">Building the docs locally</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">satchecker-client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">satchecker_client.cache</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for satchecker_client.cache</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Validated per-NORAD cache for immutable SatChecker orbit records.</span>
+
+<span class="sd">Each satellite has one small, atomically-written JSON file containing every</span>
+<span class="sd">validated record learned for it. A resolver can reuse one record for multiple</span>
+<span class="sd">nearby observation epochs by comparing its epoch with the configurable</span>
+<span class="sd">cache-reuse age. There are no catalogue buckets, snapshots, or settling states.</span>
+
+<span class="sd">A single satellite's file may hold both record kinds at once, and around the</span>
+<span class="sd">2026-07-12 archive handover it usually will: the last TLEs SatChecker ever</span>
+<span class="sd">published for it, and the OMM element sets that follow. Which one a given</span>
+<span class="sd">observation gets is decided by epoch distance in the caller's policy layer, not</span>
+<span class="sd">here.</span>
+<span class="sd">Everything below that has to be kind-aware is: what columns a record must have,</span>
+<span class="sd">what makes two records duplicates, and what "valid" means.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">glob</span><span class="w"> </span><span class="kn">import</span> <span class="n">glob</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.records</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">KIND_FIELD</span><span class="p">,</span>
+    <span class="n">KIND_OMM</span><span class="p">,</span>
+    <span class="n">KIND_TLE</span><span class="p">,</span>
+    <span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">,</span>
+    <span class="n">record_kind</span><span class="p">,</span>
+    <span class="n">validate_record</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="c1">#: Bumped from 1 when records stopped being TLE-only. The bump costs nothing:</span>
+<span class="c1">#: :meth:`TextOrbitCache.get` already treats an unusable file as a warned cache</span>
+<span class="c1">#: miss, so v1 files self-evict and are re-fetched with a clear log line instead</span>
+<span class="c1">#: of needing a migration path.</span>
+<span class="n">SCHEMA_VERSION</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1">#: What a record of each kind must carry to be worth validating at all.</span>
+<span class="n">REQUIRED_COLUMNS_BY_KIND</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">KIND_TLE</span><span class="p">:</span> <span class="p">(</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span> <span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE_LINE2"</span><span class="p">),</span>
+    <span class="n">KIND_OMM</span><span class="p">:</span> <span class="p">(</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span> <span class="s2">"EPOCH"</span><span class="p">,</span> <span class="o">*</span><span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="c1">#: What makes two records for one satellite the same record. A TLE is identified</span>
+<span class="c1">#: by its lines, which encode the epoch; an OMM has no lines, so its epoch is the</span>
+<span class="c1">#: identifying field.</span>
+<span class="n">DEDUPE_COLUMNS_BY_KIND</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">KIND_TLE</span><span class="p">:</span> <span class="p">(</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span> <span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE_LINE2"</span><span class="p">,</span> <span class="s2">"DATA_SOURCE"</span><span class="p">),</span>
+    <span class="n">KIND_OMM</span><span class="p">:</span> <span class="p">(</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span> <span class="s2">"EPOCH"</span><span class="p">,</span> <span class="s2">"DATA_SOURCE"</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="c1">#: The TLE column set, under its historical name.</span>
+<span class="n">REQUIRED_COLUMNS</span> <span class="o">=</span> <span class="n">REQUIRED_COLUMNS_BY_KIND</span><span class="p">[</span><span class="n">KIND_TLE</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="CacheValidationError">
+<a class="viewcode-back" href="../../api.html#satchecker_client.cache.CacheValidationError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CacheValidationError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A per-satellite cache file is structurally or semantically invalid."""</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validated_ids</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">expected_norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Satellite IDs from a cache frame, checked and belonging to one satellite."""</span>
+    <span class="k">if</span> <span class="s2">"NORAD_CAT_ID"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="s2">"orbit cache has no NORAD_CAT_ID column"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">frame</span><span class="p">[</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="s2">"orbit cache has null values in NORAD_CAT_ID"</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">])</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"NORAD_CAT_ID is not numeric: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">math</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="ow">or</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">))</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="s2">"NORAD_CAT_ID contains non-finite or non-integer values"</span><span class="p">)</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="n">ids</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">!=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">expected_norad_id</span><span class="p">)}:</span>
+        <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"orbit cache for </span><span class="si">{</span><span class="n">expected_norad_id</span><span class="si">}</span><span class="s2"> contains records for another satellite"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ids</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validated_records</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="n">expected_norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return a validated record frame belonging entirely to one NORAD ID.</span>
+
+<span class="sd">    Checked row by row rather than column by column, because one file may hold</span>
+<span class="sd">    both kinds: a column-level null check would reject a TLE row for having no</span>
+<span class="sd">    ``MEAN_MOTION`` and an OMM row for having no ``TLE_LINE1``, when neither is</span>
+<span class="sd">    a defect.</span>
+<span class="sd">    """</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="s2">"orbit cache has no usable records"</span><span class="p">)</span>
+    <span class="n">frame</span><span class="p">[</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_validated_ids</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">expected_norad_id</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">record_kind</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+            <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">column</span>
+                <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">REQUIRED_COLUMNS_BY_KIND</span><span class="p">[</span><span class="n">kind</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">kind</span><span class="si">}</span><span class="s2"> record is missing </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">embedded_id</span> <span class="o">=</span> <span class="n">validate_record</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"invalid record for </span><span class="si">{</span><span class="n">expected_norad_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+        <span class="k">if</span> <span class="n">embedded_id</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">(</span><span class="n">expected_norad_id</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"record belongs to satellite </span><span class="si">{</span><span class="n">embedded_id</span><span class="si">}</span><span class="s2">, not </span><span class="si">{</span><span class="n">expected_norad_id</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">frame</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_drop_duplicates_per_kind</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Deduplicate within each kind, on the columns that identify that kind.</span>
+
+<span class="sd">    One set of dedupe columns cannot serve both: dedupe on the TLE lines and</span>
+<span class="sd">    every OMM record collapses to one (they all have null lines); dedupe on</span>
+<span class="sd">    ``EPOCH`` and two genuinely different TLEs published for the same instant</span>
+<span class="sd">    would be merged.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">frame</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">frame</span>
+    <span class="n">kinds</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">_kind_for_grouping</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">kept</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">kind</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">kinds</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">column</span>
+            <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">DEDUPE_COLUMNS_BY_KIND</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="p">())</span>
+            <span class="k">if</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">]</span>
+        <span class="n">kept</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="n">columns</span><span class="p">,</span> <span class="n">keep</span><span class="o">=</span><span class="s2">"last"</span><span class="p">)</span> <span class="k">if</span> <span class="n">columns</span> <span class="k">else</span> <span class="n">group</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">kept</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+
+<span class="c1">#: Group label for a record whose kind cannot be determined. It must survive</span>
+<span class="c1">#: grouping rather than be dropped here: _validated_records is what rejects it,</span>
+<span class="c1">#: and it does so with a message that says why.</span>
+<span class="n">_UNKNOWN_KIND</span> <span class="o">=</span> <span class="s2">"unknown"</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_kind_for_grouping</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">record_kind</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_UNKNOWN_KIND</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_atomic_write_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Write *payload* atomically so a partial cache file is never observed."""</span>
+    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">fd</span><span class="p">,</span> <span class="n">temporary</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span>
+        <span class="nb">dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">),</span> <span class="n">prefix</span><span class="o">=</span><span class="n">path</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"."</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">".tmp"</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span>
+            <span class="n">handle</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">temporary</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">temporary</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">raise</span>
+
+
+<div class="viewcode-block" id="TextOrbitCache">
+<a class="viewcode-back" href="../../api.html#satchecker_client.cache.TextOrbitCache">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TextOrbitCache</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Human-readable, per-NORAD JSON cache under one directory.</span>
+
+<span class="sd">    One file per satellite, holding records of either kind. Around the archive</span>
+<span class="sd">    handover a file will typically hold both: the satellite's last TLEs and its</span>
+<span class="sd">    first OMM element sets.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache_dir</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"orbit-</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">norad_id</span><span class="p">)</span><span class="si">}</span><span class="s2">.json"</span>
+
+<div class="viewcode-block" id="TextOrbitCache.get">
+<a class="viewcode-back" href="../../api.html#satchecker_client.cache.TextOrbitCache.get">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">log</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="nb">print</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return all validated cached records for *norad_id*, or an empty frame.</span>
+
+<span class="sd">        An absent file is an ordinary miss and says nothing. A file that exists</span>
+<span class="sd">        but cannot be used is reported: silently treating it as a miss costs a</span>
+<span class="sd">        network request on every run with nothing to indicate why, and a cache</span>
+<span class="sd">        that never takes hold is otherwise invisible.</span>
+
+<span class="sd">        This is also the whole migration path for the schema bump. A v1 file</span>
+<span class="sd">        fails the version check, gets reported as unusable, and is overwritten by</span>
+<span class="sd">        the next successful fetch — so nothing has to convert it.</span>
+<span class="sd">        """</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">norad_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+                <span class="n">envelope</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">envelope</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="s2">"orbit cache envelope is not an object"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">envelope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"schema_version"</span><span class="p">)</span> <span class="o">!=</span> <span class="n">SCHEMA_VERSION</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"unsupported schema_version </span><span class="si">{</span><span class="n">envelope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'schema_version'</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> "</span>
+                    <span class="sa">f</span><span class="s2">"(this satchecker_client writes </span><span class="si">{</span><span class="n">SCHEMA_VERSION</span><span class="si">}</span><span class="s2">)"</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">envelope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"norad_id"</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">int</span><span class="p">(</span><span class="n">norad_id</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">CacheValidationError</span><span class="p">(</span><span class="s2">"orbit cache envelope has the wrong NORAD ID"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_validated_records</span><span class="p">(</span><span class="n">envelope</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"records"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[],</span> <span class="nb">int</span><span class="p">(</span><span class="n">norad_id</span><span class="p">))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="n">log</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"  warning: cached orbit file </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> is unusable (</span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">); "</span>
+                <span class="s2">"treating it as a cache miss"</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TextOrbitCache.store">
+<a class="viewcode-back" href="../../api.html#satchecker_client.cache.TextOrbitCache.store">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">store</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Merge newly fetched immutable records into one satellite's cache.</span>
+
+<span class="sd">        Concatenating kinds widens the frame — a TLE row gains null element</span>
+<span class="sd">        columns and an OMM row gains null lines — which is why deduplication and</span>
+<span class="sd">        validation are both per-row rather than per-column.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">records</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">norad_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">norad_id</span><span class="p">)</span>
+        <span class="n">incoming</span> <span class="o">=</span> <span class="n">records</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">"FETCHED_AT"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">incoming</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">incoming</span><span class="p">[</span><span class="s2">"FETCHED_AT"</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span>
+                <span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ"</span>
+            <span class="p">)</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">norad_id</span><span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">existing</span><span class="p">,</span> <span class="n">incoming</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">existing</span><span class="o">.</span><span class="n">empty</span>
+            <span class="k">else</span> <span class="n">incoming</span>
+        <span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">_drop_duplicates_per_kind</span><span class="p">(</span><span class="n">merged</span><span class="p">)</span>
+        <span class="n">merged</span> <span class="o">=</span> <span class="n">_validated_records</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">)</span>
+        <span class="n">envelope</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"schema_version"</span><span class="p">:</span> <span class="n">SCHEMA_VERSION</span><span class="p">,</span>
+            <span class="s2">"norad_id"</span><span class="p">:</span> <span class="n">norad_id</span><span class="p">,</span>
+            <span class="s2">"records"</span><span class="p">:</span> <span class="n">merged</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="n">orient</span><span class="o">=</span><span class="s2">"records"</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="n">_atomic_write_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">(</span><span class="n">norad_id</span><span class="p">),</span> <span class="n">envelope</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1">#: Columns worth carrying out of an explicit user/replay file. Everything a</span>
+<span class="c1">#: record of either kind is validated and resolved from, and nothing else.</span>
+<span class="n">_LEGACY_KEEP_COLUMNS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span>
+    <span class="s2">"OBJECT_NAME"</span><span class="p">,</span>
+    <span class="s2">"OBJECT_ID"</span><span class="p">,</span>
+    <span class="n">KIND_FIELD</span><span class="p">,</span>
+    <span class="s2">"TLE_LINE1"</span><span class="p">,</span>
+    <span class="s2">"TLE_LINE2"</span><span class="p">,</span>
+    <span class="s2">"EPOCH"</span><span class="p">,</span>
+    <span class="o">*</span><span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="read_legacy_tle_records">
+<a class="viewcode-back" href="../../api.html#satchecker_client.cache.read_legacy_tle_records">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_legacy_tle_records</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Read explicit user/replay ``*.json`` orbit tables from *directory*.</span>
+
+<span class="sd">    A file qualifies if it exposes the required columns for *either* kind, so a</span>
+<span class="sd">    Space-Track ``gp`` / ``gp_history`` export drops in unconverted whether it</span>
+<span class="sd">    carries TLE lines, OMM element columns, or — as those exports usually do —</span>
+<span class="sd">    both. No ``RECORD_KIND`` is needed: it is inferred, and a file carrying both</span>
+<span class="sd">    resolves as a TLE, whose lines are the stronger thing to validate against.</span>
+
+<span class="sd">    ``EPOCH`` is kept for the OMM records that have no other epoch. It is still</span>
+<span class="sd">    ignored for TLEs, which re-derive theirs from line 1.</span>
+
+<span class="sd">    Managed ``orbit-&lt;NORAD&gt;.json`` envelopes are intentionally not interpreted as</span>
+<span class="sd">    explicit input.</span>
+<span class="sd">    """</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">directory</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">glob</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">directory</span> <span class="o">/</span> <span class="s2">"*.json"</span><span class="p">))):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
+            <span class="nb">all</span><span class="p">(</span><span class="n">column</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">required</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">required</span> <span class="ow">in</span> <span class="n">REQUIRED_COLUMNS_BY_KIND</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="n">keep</span> <span class="o">=</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">_LEGACY_KEEP_COLUMNS</span> <span class="k">if</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="n">frames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frame</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">if</span> <span class="n">frames</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025-2026, Chris Finlay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

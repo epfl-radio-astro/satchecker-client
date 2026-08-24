@@ -38,6 +38,9 @@ coverage is fatal are application policy and stay with the caller.
 pip install satchecker-client
 ```
 
+Full documentation, including the usage guide and API reference, is at
+[satchecker-client.readthedocs.io](https://satchecker-client.readthedocs.io/).
+
 ## Use
 
 ```python

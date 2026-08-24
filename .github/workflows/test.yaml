@@ -34,6 +34,30 @@ jobs:
       - name: Run pytest
         run: pytest -v --tb=short --color=yes
 
+  docs:
+    # The docs are published by Read the Docs from .readthedocs.yaml; this job
+    # builds the same docs with warnings as errors so a broken build shows up on
+    # the pull request rather than as a red Read the Docs build after the merge.
+    name: Build docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install docs dependencies
+        run: pip install -e ".[docs]"
+
+      # -W mirrors fail_on_warning in .readthedocs.yaml; --keep-going reports
+      # every warning in one run instead of stopping at the first.
+      - name: Build docs
+        run: sphinx-build -b html -W --keep-going docs docs/_build/html
+
   build:
     # Catches metadata problems at PR time rather than at release time, when the
     # tag is already pushed and a bad upload cannot be replaced on PyPI.

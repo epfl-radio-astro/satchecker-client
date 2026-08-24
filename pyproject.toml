@@ -61,8 +61,12 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
+# Read the Docs installs `.[docs]` (see .readthedocs.yaml), so this has to cover
+# everything docs/conf.py imports.
+docs = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
 
 [project.urls]
+Documentation = "https://satchecker-client.readthedocs.io/"
 Repository = "https://github.com/epfl-radio-astro/satchecker-client"
 Issues = "https://github.com/epfl-radio-astro/satchecker-client/issues"
 "SatChecker service" = "https://satchecker.cps.iau.org/"

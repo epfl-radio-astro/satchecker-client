@@ -1,0 +1,197 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overview: module code &mdash; satchecker-client 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            satchecker-client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html#identify-your-application">Identify your application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html#two-archives-one-handover">Two archives, one handover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html#fetching-records">Fetching records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage.html#batches">Batches</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html#asking-about-a-record">Asking about a record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../usage.html#what-validation-guarantees-per-kind">What validation guarantees, per kind</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../usage.html#what-stays-with-the-caller">What stays with the caller</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-satchecker_client">Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-satchecker_client.client">Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.HANDOVER_JD"><code class="docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.SatCheckerError"><code class="docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.SatCheckerRateLimitError"><code class="docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.SatCheckerResponseError"><code class="docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.SatCheckerTransportError"><code class="docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.fetch_nearest_omm"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.fetch_nearest_tle"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.set_client_identifier"><code class="docutils literal notranslate"><span class="pre">set_client_identifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.client.user_agent"><code class="docutils literal notranslate"><span class="pre">user_agent()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-satchecker_client.service">Service</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.service.NearestBatchResult"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#satchecker_client.service.NearestBatchResult.outage"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult.outage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.service.RESPONSE_WALL_THRESHOLD"><code class="docutils literal notranslate"><span class="pre">RESPONSE_WALL_THRESHOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.service.fetch_nearest_batch"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.service.nearest_endpoints_for"><code class="docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.service.store_or_warn"><code class="docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.service.validated_records"><code class="docutils literal notranslate"><span class="pre">validated_records()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-satchecker_client.records">Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.COMMON_COLUMNS"><code class="docutils literal notranslate"><span class="pre">COMMON_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.KIND_FIELD"><code class="docutils literal notranslate"><span class="pre">KIND_FIELD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.OMM_ELEMENT_COLUMNS"><code class="docutils literal notranslate"><span class="pre">OMM_ELEMENT_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.RecordKindError"><code class="docutils literal notranslate"><span class="pre">RecordKindError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.TLE_LINE_COLUMNS"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.norad_id_of"><code class="docutils literal notranslate"><span class="pre">norad_id_of()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.parse_omm_epoch_jd"><code class="docutils literal notranslate"><span class="pre">parse_omm_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.record_elements"><code class="docutils literal notranslate"><span class="pre">record_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.record_epoch_jd"><code class="docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.record_kind"><code class="docutils literal notranslate"><span class="pre">record_kind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.records.validate_record"><code class="docutils literal notranslate"><span class="pre">validate_record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-satchecker_client.tle_parse">TLE parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.ELEMENT_FIELDS"><code class="docutils literal notranslate"><span class="pre">ELEMENT_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.TLE_LINE_LENGTH"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_LENGTH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.decode_norad_id"><code class="docutils literal notranslate"><span class="pre">decode_norad_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.parse_tle_elements"><code class="docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.semimajor_axis_km"><code class="docutils literal notranslate"><span class="pre">semimajor_axis_km()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.tle_checksum"><code class="docutils literal notranslate"><span class="pre">tle_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.tle_epoch_jd"><code class="docutils literal notranslate"><span class="pre">tle_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.validate_elements"><code class="docutils literal notranslate"><span class="pre">validate_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.validate_tle_line"><code class="docutils literal notranslate"><span class="pre">validate_tle_line()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.tle_parse.validate_tle_pair"><code class="docutils literal notranslate"><span class="pre">validate_tle_pair()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#module-satchecker_client.cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.CacheValidationError"><code class="docutils literal notranslate"><span class="pre">CacheValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.REQUIRED_COLUMNS"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.SCHEMA_VERSION"><code class="docutils literal notranslate"><span class="pre">SCHEMA_VERSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.TextOrbitCache"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#satchecker_client.cache.TextOrbitCache.get"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api.html#satchecker_client.cache.TextOrbitCache.store"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../api.html#satchecker_client.cache.read_legacy_tle_records"><code class="docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../readthedocs.html">Publishing the Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../readthedocs.html#versions">Versions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../readthedocs.html#publishing-a-release-version">Publishing a release version</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../readthedocs.html#one-time-project-setup">One-time project setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../readthedocs.html#building-the-docs-locally">Building the docs locally</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">satchecker-client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Overview: module code</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>All modules for which code is available</h1>
+<ul><li><a href="satchecker_client/cache.html">satchecker_client.cache</a></li>
+<li><a href="satchecker_client/client.html">satchecker_client.client</a></li>
+<li><a href="satchecker_client/records.html">satchecker_client.records</a></li>
+<li><a href="satchecker_client/service.html">satchecker_client.service</a></li>
+<li><a href="satchecker_client/tle_parse.html">satchecker_client.tle_parse</a></li>
+</ul>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025-2026, Chris Finlay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

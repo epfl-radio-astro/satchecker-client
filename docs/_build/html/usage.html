@@ -1,0 +1,393 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage guide &mdash; satchecker-client 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="satchecker-client" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            satchecker-client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#identify-your-application">Identify your application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#two-archives-one-handover">Two archives, one handover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fetching-records">Fetching records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#batches">Batches</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#asking-about-a-record">Asking about a record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#what-validation-guarantees-per-kind">What validation guarantees, per kind</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-stays-with-the-caller">What stays with the caller</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-satchecker_client">Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-satchecker_client.client">Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.HANDOVER_JD"><code class="docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerError"><code class="docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerRateLimitError"><code class="docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerResponseError"><code class="docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerTransportError"><code class="docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.fetch_nearest_omm"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.fetch_nearest_tle"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.set_client_identifier"><code class="docutils literal notranslate"><span class="pre">set_client_identifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.client.user_agent"><code class="docutils literal notranslate"><span class="pre">user_agent()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-satchecker_client.service">Service</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.service.NearestBatchResult"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#satchecker_client.service.NearestBatchResult.outage"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult.outage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.service.RESPONSE_WALL_THRESHOLD"><code class="docutils literal notranslate"><span class="pre">RESPONSE_WALL_THRESHOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.service.fetch_nearest_batch"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.service.nearest_endpoints_for"><code class="docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.service.store_or_warn"><code class="docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.service.validated_records"><code class="docutils literal notranslate"><span class="pre">validated_records()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-satchecker_client.records">Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.COMMON_COLUMNS"><code class="docutils literal notranslate"><span class="pre">COMMON_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.KIND_FIELD"><code class="docutils literal notranslate"><span class="pre">KIND_FIELD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.OMM_ELEMENT_COLUMNS"><code class="docutils literal notranslate"><span class="pre">OMM_ELEMENT_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.RecordKindError"><code class="docutils literal notranslate"><span class="pre">RecordKindError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.TLE_LINE_COLUMNS"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.norad_id_of"><code class="docutils literal notranslate"><span class="pre">norad_id_of()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.parse_omm_epoch_jd"><code class="docutils literal notranslate"><span class="pre">parse_omm_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.record_elements"><code class="docutils literal notranslate"><span class="pre">record_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.record_epoch_jd"><code class="docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.record_kind"><code class="docutils literal notranslate"><span class="pre">record_kind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.records.validate_record"><code class="docutils literal notranslate"><span class="pre">validate_record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-satchecker_client.tle_parse">TLE parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.ELEMENT_FIELDS"><code class="docutils literal notranslate"><span class="pre">ELEMENT_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.TLE_LINE_LENGTH"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_LENGTH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.decode_norad_id"><code class="docutils literal notranslate"><span class="pre">decode_norad_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.parse_tle_elements"><code class="docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.semimajor_axis_km"><code class="docutils literal notranslate"><span class="pre">semimajor_axis_km()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.tle_checksum"><code class="docutils literal notranslate"><span class="pre">tle_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.tle_epoch_jd"><code class="docutils literal notranslate"><span class="pre">tle_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.validate_elements"><code class="docutils literal notranslate"><span class="pre">validate_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.validate_tle_line"><code class="docutils literal notranslate"><span class="pre">validate_tle_line()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.tle_parse.validate_tle_pair"><code class="docutils literal notranslate"><span class="pre">validate_tle_pair()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-satchecker_client.cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.CacheValidationError"><code class="docutils literal notranslate"><span class="pre">CacheValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.REQUIRED_COLUMNS"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.SCHEMA_VERSION"><code class="docutils literal notranslate"><span class="pre">SCHEMA_VERSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.TextOrbitCache"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#satchecker_client.cache.TextOrbitCache.get"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#satchecker_client.cache.TextOrbitCache.store"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#satchecker_client.cache.read_legacy_tle_records"><code class="docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="readthedocs.html">Publishing the Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs.html#versions">Versions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="readthedocs.html#publishing-a-release-version">Publishing a release version</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs.html#one-time-project-setup">One-time project setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs.html#building-the-docs-locally">Building the docs locally</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">satchecker-client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage-guide">
+<h1>Usage guide<a class="headerlink" href="#usage-guide" title="Link to this heading"></a></h1>
+<p>Everything below is importable from the top-level package:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">satchecker_client</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sc</span>
+</pre></div>
+</div>
+<section id="identify-your-application">
+<h2>Identify your application<a class="headerlink" href="#identify-your-application" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sc</span><span class="o">.</span><span class="n">set_client_identifier</span><span class="p">(</span><span class="s2">"my-app/1.0 (+https://example.org/my-app)"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Optional, but do it. The service is run as a courtesy to the community and is
+rate limited, so a burst of traffic its operators want to ask about should be
+traceable to the application that made it rather than to the client library
+every application shares. The identifier is appended to the package’s own
+<code class="docutils literal notranslate"><span class="pre">User-Agent</span></code>; <a class="reference internal" href="api.html#satchecker_client.client.user_agent" title="satchecker_client.client.user_agent"><code class="xref py py-func docutils literal notranslate"><span class="pre">user_agent()</span></code></a> returns the combined
+string being sent.</p>
+</section>
+<section id="two-archives-one-handover">
+<h2>Two archives, one handover<a class="headerlink" href="#two-archives-one-handover" title="Link to this heading"></a></h2>
+<p>SatChecker keeps satellite orbits in two formats, and which one you get depends
+on the epoch you ask about.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Archive</p></th>
+<th class="head"><p>Endpoint</p></th>
+<th class="head"><p>Covers</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>TLE</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get-nearest-tle</span></code></p></td>
+<td><p>up to <strong>2026-07-11</strong>, frozen</p></td>
+</tr>
+<tr class="row-odd"><td><p>OMM</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get-nearest-omm</span></code></p></td>
+<td><p>from <strong>2026-07-12</strong> onwards, growing</p></td>
+</tr>
+</tbody>
+</table>
+<p>The two do not overlap: the last TLE and the first OMM are about twelve hours
+apart, and the TLE archive will never gain another record. SatChecker 1.7.0 made
+the split because Celestrak is dropping Alpha-5 notation in order to preserve
+the original TLE format — which means catalogue numbers above 99999 cease to be
+representable as TLEs at all.</p>
+<p>A <strong>TLE</strong> (Two-Line Element set) encodes an orbit in two fixed-width 69-column
+lines. An <strong>OMM</strong> (Orbit Mean-Elements Message) carries the same orbital
+elements as named numeric fields. Both describe the same SGP4 model, and
+<a class="reference internal" href="api.html#satchecker_client.records.record_elements" title="satchecker_client.records.record_elements"><code class="xref py py-func docutils literal notranslate"><span class="pre">record_elements()</span></code></a> derives the same element set
+from either, so nothing downstream needs to care which kind a satellite resolved
+to.</p>
+<p><a class="reference internal" href="api.html#satchecker_client.service.nearest_endpoints_for" title="satchecker_client.service.nearest_endpoints_for"><code class="xref py py-func docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a> picks the endpoint to
+ask first from the epoch — the dividing line is
+<a class="reference internal" href="api.html#satchecker_client.client.HANDOVER_JD" title="satchecker_client.client.HANDOVER_JD"><code class="xref py py-data docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a> — and always offers the other as a
+fallback, because <strong>neither endpoint reports that it has nothing near the epoch
+you asked for</strong>. Ask <code class="docutils literal notranslate"><span class="pre">get-nearest-omm</span></code> for a 2021 epoch and it returns its
+earliest 2026 record — years off, with nothing in the response to say so. Ask
+<code class="docutils literal notranslate"><span class="pre">get-nearest-tle</span></code> for a 2027 epoch and it returns the last TLE ever published.
+Only the caller’s own staleness policy can tell a good answer from a clamped
+one, and when the answer turns out to be unusable, the <em>other</em> endpoint is where
+the record actually lives. That is also why the handover date is a hint rather
+than a cutoff: SatChecker sources OMM from Space-Track as well as Celestrak, and
+Space-Track’s OMM history runs years deep, so OMM may yet appear for earlier
+epochs.</p>
+</section>
+<section id="fetching-records">
+<h2>Fetching records<a class="headerlink" href="#fetching-records" title="Link to this heading"></a></h2>
+<p><a class="reference internal" href="api.html#satchecker_client.client.fetch_nearest_tle" title="satchecker_client.client.fetch_nearest_tle"><code class="xref py py-func docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a> and
+<a class="reference internal" href="api.html#satchecker_client.client.fetch_nearest_omm" title="satchecker_client.client.fetch_nearest_omm"><code class="xref py py-func docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a> each take a NORAD catalogue
+number and a UTC Julian Date epoch, and return a pandas <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> with a
+normalised column set (<code class="xref py py-data docutils literal notranslate"><span class="pre">TLE_COLUMNS</span></code> or
+<code class="xref py py-data docutils literal notranslate"><span class="pre">OMM_COLUMNS</span></code>, plus a <code class="docutils literal notranslate"><span class="pre">RECORD_KIND</span></code> column). An
+empty frame means the service answered and has nothing for that satellite.</p>
+<p>Failures are typed, and the distinction matters:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerError" title="satchecker_client.client.SatCheckerError"><code class="xref py py-class docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a> — the base class.</p></li>
+<li><p><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerResponseError" title="satchecker_client.client.SatCheckerResponseError"><code class="xref py py-class docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a> — the service is
+up and answered, but this request failed: a 404 for an unknown catalogue
+number, or a malformed reply. One satellite’s problem; the rest of a list is
+still worth asking about.</p></li>
+<li><p><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerTransportError" title="satchecker_client.client.SatCheckerTransportError"><code class="xref py py-class docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a> — the service
+could not be reached. Every further request is one you already know is
+unwelcome.</p></li>
+<li><p><a class="reference internal" href="api.html#satchecker_client.client.SatCheckerRateLimitError" title="satchecker_client.client.SatCheckerRateLimitError"><code class="xref py py-class docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a> — a subclass of
+the transport error: the service answered HTTP 429 to say this client should
+back off. Carries the <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> hint as <code class="docutils literal notranslate"><span class="pre">retry_after</span></code> (seconds) when the
+service supplies one.</p></li>
+</ul>
+<section id="batches">
+<h3>Batches<a class="headerlink" href="#batches" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">fetch</span> <span class="ow">in</span> <span class="n">sc</span><span class="o">.</span><span class="n">nearest_endpoints_for</span><span class="p">(</span><span class="n">epoch_jd</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">fetch_nearest_batch</span><span class="p">(</span><span class="n">norad_ids</span><span class="p">,</span> <span class="n">epoch_jd</span><span class="p">,</span> <span class="n">fetch_nearest</span><span class="o">=</span><span class="n">fetch</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">outage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">result</span><span class="o">.</span><span class="n">outage</span>          <span class="c1"># the service, not this satellite</span>
+    <span class="k">for</span> <span class="n">norad_id</span><span class="p">,</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">norad_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># this satellite, keep going</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">records</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api.html#satchecker_client.service.fetch_nearest_batch" title="satchecker_client.service.fetch_nearest_batch"><code class="xref py py-func docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a> is written to be a
+considerate client of a free public service:</p>
+<ul class="simple">
+<li><p>Requests are issued at most <code class="docutils literal notranslate"><span class="pre">max_workers</span></code> at a time (default
+<code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_WORKERS</span></code>, five), submitted one at a time
+as earlier ones land rather than queued all at once.</p></li>
+<li><p>A transport failure or a rate limit stops the batch there: no further
+requests are sent, so an outage costs at most <code class="docutils literal notranslate"><span class="pre">max_workers</span></code> requests no matter
+how many satellites were asked for.</p></li>
+<li><p>A response failure is recorded per satellite and the rest of the batch
+continues — but should the service reject ten consecutive requests with the
+same status and no success in between, the batch concludes it is facing a
+wall rather than ten absent satellites, and stops there too.</p></li>
+<li><p>Every returned record is validated and checked against the NORAD ID it was
+requested for before it is included.</p></li>
+</ul>
+<p>The <a class="reference internal" href="api.html#satchecker_client.service.NearestBatchResult" title="satchecker_client.service.NearestBatchResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a> separates these
+outcomes: <code class="docutils literal notranslate"><span class="pre">records</span></code> (the validated rows), <code class="docutils literal notranslate"><span class="pre">errors</span></code> (per-satellite failures,
+including the IDs never sent after an outage), and <code class="docutils literal notranslate"><span class="pre">outage</span></code> (set when the
+service itself was the problem — the signal that retrying against the <em>other</em>
+endpoint would be asking a down service a different question).</p>
+</section>
+</section>
+<section id="asking-about-a-record">
+<h2>Asking about a record<a class="headerlink" href="#asking-about-a-record" title="Link to this heading"></a></h2>
+<p>Records are pandas rows. Rather than testing for columns yourself, ask:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#satchecker_client.records.record_kind" title="satchecker_client.records.record_kind"><code class="xref py py-func docutils literal notranslate"><span class="pre">record_kind()</span></code></a> — <code class="docutils literal notranslate"><span class="pre">&quot;tle&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;omm&quot;</span></code>.</p></li>
+<li><p><a class="reference internal" href="api.html#satchecker_client.records.record_epoch_jd" title="satchecker_client.records.record_epoch_jd"><code class="xref py py-func docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a> — the epoch as a UTC
+Julian Date. A TLE’s epoch is always re-derived from line 1, never taken from
+a provider field; an OMM’s <code class="docutils literal notranslate"><span class="pre">EPOCH</span></code> is parsed and range-checked instead.</p></li>
+<li><p><a class="reference internal" href="api.html#satchecker_client.records.record_elements" title="satchecker_client.records.record_elements"><code class="xref py py-func docutils literal notranslate"><span class="pre">record_elements()</span></code></a> — the seven shared
+orbital elements plus <code class="docutils literal notranslate"><span class="pre">BSTAR</span></code>, in the same units for either kind.</p></li>
+<li><p><a class="reference internal" href="api.html#satchecker_client.records.validate_record" title="satchecker_client.records.validate_record"><code class="xref py py-func docutils literal notranslate"><span class="pre">validate_record()</span></code></a> — everything below, in
+one call; returns the satellite’s embedded NORAD ID.</p></li>
+</ul>
+<section id="what-validation-guarantees-per-kind">
+<h3>What validation guarantees, per kind<a class="headerlink" href="#what-validation-guarantees-per-kind" title="Link to this heading"></a></h3>
+<p>The two formats do not offer the same guarantees, and the difference is worth
+being explicit about rather than letting it pass silently.</p>
+<p>Both kinds are checked for a present, numeric, finite, whole-number
+<code class="docutils literal notranslate"><span class="pre">NORAD_CAT_ID</span></code>; finiteness on all seven orbital elements; and element ranges
+(inclination in [0, 180]; RAAN, argument of pericenter and mean anomaly in
+[0, 360); eccentricity in [0, 1); mean motion strictly positive).</p>
+<p>A <strong>TLE</strong> additionally gets two checks with no OMM equivalent:</p>
+<ul class="simple">
+<li><p><strong>The modulo-10 checksum</strong> on each 69-column line — what makes
+single-character corruption detectable. A flipped digit inside a fixed-width
+numeric field otherwise parses cleanly, stays in range, and silently shifts
+the modelled trajectory.</p></li>
+<li><p><strong>The embedded identity cross-check.</strong> Both lines carry the satellite
+identifier and must agree with each other and with the row, so a record filed
+under the wrong satellite is caught.</p></li>
+</ul>
+<p><strong>An OMM record has no checksum</strong>, and there is no way to add one. Its <code class="docutils literal notranslate"><span class="pre">EPOCH</span></code>
+must parse as ISO 8601 and fall inside an absolute plausibility window (not
+before 1957, not more than a year in the future); that and the range checks are
+what stand in for it, and they are weaker. This is a property of the format,
+not of the handling.</p>
+</section>
+</section>
+<section id="caching">
+<h2>Caching<a class="headerlink" href="#caching" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cache</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">TextOrbitCache</span><span class="p">(</span><span class="s2">"~/.cache/my-app/orbits"</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">store_or_warn</span><span class="p">(</span><span class="n">cache</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">records</span><span class="p">)</span>
+<span class="n">known</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">norad_id</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="api.html#satchecker_client.cache.TextOrbitCache" title="satchecker_client.cache.TextOrbitCache"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a> keeps one atomically-written,
+versioned JSON envelope per satellite (<code class="docutils literal notranslate"><span class="pre">orbit-&lt;NORAD&gt;.json</span></code>). Records are keyed
+by their contents and epoch rather than by the request that fetched them, so one
+record can serve any number of nearby epochs, and one file holds both kinds —
+around the handover a satellite will typically carry its last TLEs and its first
+OMM records side by side.</p>
+<p>Reads validate the schema version, the NORAD identity, and every field consumed
+downstream. An absent file is an ordinary miss; a file that exists but cannot be
+used is reported and treated as a miss, so a cache that never takes hold does
+not silently cost a request every run. <code class="docutils literal notranslate"><span class="pre">store</span></code> merges and deduplicates rather
+than overwrites, and <a class="reference internal" href="api.html#satchecker_client.service.store_or_warn" title="satchecker_client.service.store_or_warn"><code class="xref py py-func docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a> turns a
+failed write into a warning instead of losing the fetched records to an I/O
+error.</p>
+<p><a class="reference internal" href="api.html#satchecker_client.cache.read_legacy_tle_records" title="satchecker_client.cache.read_legacy_tle_records"><code class="xref py py-func docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a> reads a directory of
+plain pandas-oriented JSON files — the shape of a Space-Track <code class="docutils literal notranslate"><span class="pre">gp</span></code> export —
+for callers migrating from files they already have.</p>
+</section>
+<section id="what-stays-with-the-caller">
+<h2>What stays with the caller<a class="headerlink" href="#what-stays-with-the-caller" title="Link to this heading"></a></h2>
+<p>This package takes no view on <em>which</em> record an application should use. Source
+precedence, how stale a record may be before it is refused, whether a stale
+answer from the primary archive should trigger a request to the other one, and
+whether missing coverage is fatal are application policy. TABASCAL, the
+original consumer, documents its policy — nearest-record selection, age
+ceilings, cache-reuse thresholds, and complete-coverage enforcement — in its
+own <a class="reference external" href="https://tabascal.readthedocs.io/en/latest/orbits.html">orbit records guide</a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="satchecker-client" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025-2026, Chris Finlay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,730 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>satchecker_client.client &mdash; satchecker-client 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            satchecker-client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#identify-your-application">Identify your application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#two-archives-one-handover">Two archives, one handover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#fetching-records">Fetching records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage.html#batches">Batches</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#asking-about-a-record">Asking about a record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../usage.html#what-validation-guarantees-per-kind">What validation guarantees, per kind</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../usage.html#what-stays-with-the-caller">What stays with the caller</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client">Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.client">Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.HANDOVER_JD"><code class="docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerError"><code class="docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerRateLimitError"><code class="docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerResponseError"><code class="docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.SatCheckerTransportError"><code class="docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.fetch_nearest_omm"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.fetch_nearest_tle"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.set_client_identifier"><code class="docutils literal notranslate"><span class="pre">set_client_identifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.client.user_agent"><code class="docutils literal notranslate"><span class="pre">user_agent()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.service">Service</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.NearestBatchResult"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.service.NearestBatchResult.outage"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult.outage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.RESPONSE_WALL_THRESHOLD"><code class="docutils literal notranslate"><span class="pre">RESPONSE_WALL_THRESHOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.fetch_nearest_batch"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.nearest_endpoints_for"><code class="docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.store_or_warn"><code class="docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.service.validated_records"><code class="docutils literal notranslate"><span class="pre">validated_records()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.records">Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.COMMON_COLUMNS"><code class="docutils literal notranslate"><span class="pre">COMMON_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.KIND_FIELD"><code class="docutils literal notranslate"><span class="pre">KIND_FIELD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.OMM_ELEMENT_COLUMNS"><code class="docutils literal notranslate"><span class="pre">OMM_ELEMENT_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.RecordKindError"><code class="docutils literal notranslate"><span class="pre">RecordKindError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.TLE_LINE_COLUMNS"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.norad_id_of"><code class="docutils literal notranslate"><span class="pre">norad_id_of()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.parse_omm_epoch_jd"><code class="docutils literal notranslate"><span class="pre">parse_omm_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_elements"><code class="docutils literal notranslate"><span class="pre">record_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_epoch_jd"><code class="docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.record_kind"><code class="docutils literal notranslate"><span class="pre">record_kind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.records.validate_record"><code class="docutils literal notranslate"><span class="pre">validate_record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.tle_parse">TLE parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.ELEMENT_FIELDS"><code class="docutils literal notranslate"><span class="pre">ELEMENT_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.TLE_LINE_LENGTH"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_LENGTH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.decode_norad_id"><code class="docutils literal notranslate"><span class="pre">decode_norad_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.parse_tle_elements"><code class="docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.semimajor_axis_km"><code class="docutils literal notranslate"><span class="pre">semimajor_axis_km()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.tle_checksum"><code class="docutils literal notranslate"><span class="pre">tle_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.tle_epoch_jd"><code class="docutils literal notranslate"><span class="pre">tle_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_elements"><code class="docutils literal notranslate"><span class="pre">validate_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_tle_line"><code class="docutils literal notranslate"><span class="pre">validate_tle_line()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.tle_parse.validate_tle_pair"><code class="docutils literal notranslate"><span class="pre">validate_tle_pair()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../api.html#module-satchecker_client.cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.CacheValidationError"><code class="docutils literal notranslate"><span class="pre">CacheValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.REQUIRED_COLUMNS"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.SCHEMA_VERSION"><code class="docutils literal notranslate"><span class="pre">SCHEMA_VERSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache.get"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../api.html#satchecker_client.cache.TextOrbitCache.store"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../api.html#satchecker_client.cache.read_legacy_tle_records"><code class="docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../readthedocs.html">Publishing the Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#versions">Versions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../readthedocs.html#publishing-a-release-version">Publishing a release version</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#one-time-project-setup">One-time project setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../readthedocs.html#building-the-docs-locally">Building the docs locally</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">satchecker-client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">satchecker_client.client</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for satchecker_client.client</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""Client for the IAU CPS SatChecker nearest-element service.</span>
+
+<span class="sd">Self-contained transport layer: this module talks to the SatChecker HTTP API and</span>
+<span class="sd">returns pandas DataFrames with a normalised column set. No account or credentials</span>
+<span class="sd">are required. It knows nothing about caching, cache-key policy, or</span>
+<span class="sd">source-precedence policy — the first lives in :mod:`satchecker_client.cache` and</span>
+<span class="sd">the rest are the caller's.</span>
+
+<span class="sd">Two endpoints, because SatChecker keeps two archives:</span>
+
+<span class="sd">``GET /tools/get-nearest-tle/``</span>
+<span class="sd">    The TLE whose epoch is closest to the requested one. This archive is frozen:</span>
+<span class="sd">    its last record is from 2026-07-11 and it will never gain another.</span>
+<span class="sd">``GET /tools/get-nearest-omm/``</span>
+<span class="sd">    The OMM element set whose epoch is closest to the requested one. This</span>
+<span class="sd">    archive begins at the handover, twelve hours after the TLE archive ends, and</span>
+<span class="sd">    grows forward only.</span>
+
+<span class="sd">SatChecker 1.7.0 made the split because Celestrak is dropping Alpha-5 notation</span>
+<span class="sd">to preserve the original TLE format, which leaves catalogue numbers above 99999</span>
+<span class="sd">with no TLE representation at all. Which endpoint to ask is</span>
+<span class="sd">:mod:`satchecker_client.service`'s decision, not this module's.</span>
+
+<span class="sd">Neither archive reports "I have nothing that old". ``get-nearest-omm`` answers a</span>
+<span class="sd">2021 request with its earliest 2026-07-11 record, 4.6 years off epoch, and says</span>
+<span class="sd">nothing about the discrepancy. Callers are expected to check the epoch they got</span>
+<span class="sd">against the epoch they asked for; this module only reports what came back.</span>
+
+<span class="sd">Returned frames use OMM-style column names throughout. Both kinds carry</span>
+<span class="sd">``NORAD_CAT_ID``, ``OBJECT_NAME``, ``EPOCH``, ``DATA_SOURCE``,</span>
+<span class="sd">``DATE_COLLECTED`` and ``RECORD_KIND``; TLE frames add ``TLE_LINE1`` /</span>
+<span class="sd">``TLE_LINE2``, and OMM frames add ``OBJECT_ID`` and the seven element columns.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">email.utils</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">http.client</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.error</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.parse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._version</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._time</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime_to_jd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.records</span><span class="w"> </span><span class="kn">import</span> <span class="n">KIND_FIELD</span><span class="p">,</span> <span class="n">KIND_OMM</span><span class="p">,</span> <span class="n">KIND_TLE</span><span class="p">,</span> <span class="n">OMM_ELEMENT_COLUMNS</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Configuration</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="n">BASE_URL</span> <span class="o">=</span> <span class="s2">"https://satchecker.cps.iau.org/tools"</span>
+<span class="c1"># Identify ourselves to the SatChecker operators, with a contact URL. The</span>
+<span class="c1"># service is run as a courtesy to the community and is rate limited, so a</span>
+<span class="c1"># request that cannot be attributed is a request its operators cannot reason</span>
+<span class="c1"># about.</span>
+<span class="n">USER_AGENT</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"satchecker-client/</span><span class="si">{</span><span class="n">__version__</span><span class="si">}</span><span class="s2"> "</span>
+    <span class="s2">"(+https://github.com/epfl-radio-astro/satchecker-client)"</span>
+<span class="p">)</span>
+
+<span class="c1">#: Appended to :data:`USER_AGENT` by :func:`set_client_identifier`. Set by the</span>
+<span class="c1">#: consuming application, not by this package.</span>
+<span class="n">_client_identifier</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">REQUEST_TIMEOUT</span> <span class="o">=</span> <span class="mi">120</span>  <span class="c1"># seconds</span>
+
+
+<div class="viewcode-block" id="set_client_identifier">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.set_client_identifier">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_client_identifier</span><span class="p">(</span><span class="n">identifier</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Name the consuming application in this package's outgoing User-Agent.</span>
+
+<span class="sd">    Without this every caller looks identical to the SatChecker operators, which</span>
+<span class="sd">    matters because the library is shared: a burst of traffic they want to ask</span>
+<span class="sd">    about should be traceable to the application that made it rather than to the</span>
+<span class="sd">    client library that all of them use. Call it once at import or startup::</span>
+
+<span class="sd">        satchecker_client.set_client_identifier("tabascal/0.1.0")</span>
+
+<span class="sd">    Pass ``None`` to clear it.</span>
+<span class="sd">    """</span>
+    <span class="k">global</span> <span class="n">_client_identifier</span>
+    <span class="n">_client_identifier</span> <span class="o">=</span> <span class="n">identifier</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">identifier</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="user_agent">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.user_agent">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">user_agent</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""The full User-Agent sent with each request, caller identity included."""</span>
+    <span class="k">if</span> <span class="n">_client_identifier</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">USER_AGENT</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">_client_identifier</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">return</span> <span class="n">USER_AGENT</span></div>
+
+
+<span class="c1">#: Where SatChecker stopped publishing TLEs and started publishing OMM. Its</span>
+<span class="c1">#: 1.7.0 changelog: "TLEs for dates before 2026-07-12 will continue to be used as</span>
+<span class="c1">#: is with no changes to any of the related endpoints, but OMM will be used for</span>
+<span class="c1">#: everything going forward."</span>
+<span class="c1">#:</span>
+<span class="c1">#: A *hint*, not a contract. It picks which endpoint to ask first and nothing</span>
+<span class="c1">#: else; being wrong about it costs one extra request, because the caller falls</span>
+<span class="c1">#: back to the other endpoint when the first yields nothing acceptable. That</span>
+<span class="c1">#: matters because the boundary can move: SatChecker now sources OMM from</span>
+<span class="c1">#: Space-Track as well as Celestrak, and Space-Track's OMM history runs years</span>
+<span class="c1">#: deep, so a backfill is plausible. A hardcoded permanent cutoff would keep</span>
+<span class="c1">#: silently preferring TLEs for periods where better OMM had appeared.</span>
+<span class="c1">#:</span>
+<span class="c1">#: Deliberately not a config key: it is a property of the service, not of a run.</span>
+<span class="n">HANDOVER_JD</span> <span class="o">=</span> <span class="n">datetime_to_jd</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2026</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+
+<span class="c1"># Columns the normalised TLE frames expose.</span>
+<span class="n">TLE_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span>
+    <span class="s2">"OBJECT_NAME"</span><span class="p">,</span>
+    <span class="s2">"EPOCH"</span><span class="p">,</span>
+    <span class="s2">"TLE_LINE1"</span><span class="p">,</span>
+    <span class="s2">"TLE_LINE2"</span><span class="p">,</span>
+    <span class="s2">"DATA_SOURCE"</span><span class="p">,</span>
+    <span class="s2">"DATE_COLLECTED"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># Columns the normalised OMM frames expose.</span>
+<span class="n">OMM_COLUMNS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span>
+    <span class="s2">"OBJECT_NAME"</span><span class="p">,</span>
+    <span class="s2">"OBJECT_ID"</span><span class="p">,</span>
+    <span class="s2">"EPOCH"</span><span class="p">,</span>
+    <span class="o">*</span><span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">,</span>
+    <span class="s2">"DATA_SOURCE"</span><span class="p">,</span>
+    <span class="s2">"DATE_COLLECTED"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1"># SatChecker response field -&gt; normalised column name.</span>
+<span class="n">_FIELD_RENAME</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"satellite_id"</span><span class="p">:</span> <span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span>
+    <span class="s2">"satellite_name"</span><span class="p">:</span> <span class="s2">"OBJECT_NAME"</span><span class="p">,</span>
+    <span class="s2">"epoch"</span><span class="p">:</span> <span class="s2">"EPOCH"</span><span class="p">,</span>
+    <span class="s2">"tle_line1"</span><span class="p">:</span> <span class="s2">"TLE_LINE1"</span><span class="p">,</span>
+    <span class="s2">"tle_line2"</span><span class="p">:</span> <span class="s2">"TLE_LINE2"</span><span class="p">,</span>
+    <span class="s2">"data_source"</span><span class="p">:</span> <span class="s2">"DATA_SOURCE"</span><span class="p">,</span>
+    <span class="s2">"date_collected"</span><span class="p">:</span> <span class="s2">"DATE_COLLECTED"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># The same, for the OMM rows. The row-level ``epoch`` is deliberately *not*</span>
+<span class="c1"># mapped: SatChecker spells it "2026-08-13 03:34:14 UTC" there, which is neither</span>
+<span class="c1"># ISO 8601 nor sub-second, while the nested element object carries the same</span>
+<span class="c1"># instant as "2026-08-13T03:34:14.082240". The nested one is what we lift.</span>
+<span class="n">_FIELD_RENAME_OMM</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"satellite_id"</span><span class="p">:</span> <span class="s2">"NORAD_CAT_ID"</span><span class="p">,</span>
+    <span class="s2">"satellite_name"</span><span class="p">:</span> <span class="s2">"OBJECT_NAME"</span><span class="p">,</span>
+    <span class="s2">"data_source"</span><span class="p">:</span> <span class="s2">"DATA_SOURCE"</span><span class="p">,</span>
+    <span class="s2">"date_collected"</span><span class="p">:</span> <span class="s2">"DATE_COLLECTED"</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Fields lifted out of each row's nested ``orbital_elements`` object. SatChecker</span>
+<span class="c1"># already names them in OMM style, so this is a move rather than a translation.</span>
+<span class="c1"># The object also carries CLASSIFICATION_TYPE, ELEMENT_SET_NO, EPHEMERIS_TYPE,</span>
+<span class="c1"># MEAN_MOTION_DOT, MEAN_MOTION_DDOT and REV_AT_EPOCH; nothing downstream reads</span>
+<span class="c1"># them, so they are dropped rather than stored and never used.</span>
+<span class="n">_OMM_LIFTED_FIELDS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"EPOCH"</span><span class="p">,</span> <span class="s2">"OBJECT_ID"</span><span class="p">,</span> <span class="o">*</span><span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SatCheckerError">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.SatCheckerError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SatCheckerError</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Raised when SatChecker cannot be reached or returns no usable data.</span>
+
+<span class="sd">    The two subclasses below separate the failures a caller can usefully route</span>
+<span class="sd">    around from the ones it cannot; catching this base class treats them alike and</span>
+<span class="sd">    is only appropriate at a top-level boundary.</span>
+<span class="sd">    """</span></div>
+
+
+
+<div class="viewcode-block" id="SatCheckerTransportError">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.SatCheckerTransportError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SatCheckerTransportError</span><span class="p">(</span><span class="n">SatCheckerError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The service could not be reached: connection, TLS, timeout or mid-read failure.</span>
+
+<span class="sd">    Whole-service, not per-request: every other satellite's lookup would go to the</span>
+<span class="sd">    same unreachable host. :func:`satchecker_client.service.fetch_nearest_batch`</span>
+<span class="sd">    treats the first one as the answer for the whole batch and abandons the</span>
+<span class="sd">    requests still queued, rather than paying the request timeout once per</span>
+<span class="sd">    configured satellite to learn the same thing.</span>
+<span class="sd">    """</span></div>
+
+
+
+<div class="viewcode-block" id="SatCheckerRateLimitError">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.SatCheckerRateLimitError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SatCheckerRateLimitError</span><span class="p">(</span><span class="n">SatCheckerTransportError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The service asked this client to slow down (HTTP 429).</span>
+
+<span class="sd">    A *transport* error by classification, because the thing it tells us is about</span>
+<span class="sd">    the service and not about the satellite we happened to ask for: the next</span>
+<span class="sd">    request is unwelcome too. Being a subclass is what stops a batch dead on the</span>
+<span class="sd">    first 429 instead of working through the rest of the list.</span>
+
+<span class="sd">    ``retry_after`` carries the service's own ``Retry-After`` hint in seconds when</span>
+<span class="sd">    it sends one, so the message can say when the run is worth repeating. This</span>
+<span class="sd">    package reports the hint rather than sleeping on it: an unattended run that</span>
+<span class="sd">    quietly blocks for an interval the service chose is worse than one that stops</span>
+<span class="sd">    and says why. Whether to wait is the caller's call.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">retry_after</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">retry_after</span> <span class="o">=</span> <span class="n">retry_after</span></div>
+
+
+
+<div class="viewcode-block" id="SatCheckerResponseError">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.SatCheckerResponseError">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SatCheckerResponseError</span><span class="p">(</span><span class="n">SatCheckerError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The service answered, but the response is unusable: malformed or incomplete.</span>
+
+<span class="sd">    Per-request, not whole-service: the host is up and answering, so it says</span>
+<span class="sd">    nothing about the other satellites. Callers record it against the one ID and</span>
+<span class="sd">    carry on with the rest of the batch.</span>
+
+<span class="sd">    ``status`` is the HTTP status when the failure came from one (``None`` for a</span>
+<span class="sd">    malformed body). A run of identical statuses with no success in between is</span>
+<span class="sd">    how a caller recognises that "per-request" has stopped being true — a WAF</span>
+<span class="sd">    answering 403 to everything, or a renamed endpoint answering 404.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">status</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Low-level HTTP + normalisation</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1"># HTTP statuses that mean service-level backoff rather than a bad individual request.</span>
+<span class="n">_BACKOFF_STATUSES</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="mi">429</span><span class="p">})</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_retry_after_seconds</span><span class="p">(</span><span class="n">error</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Seconds to wait, from a ``Retry-After`` header in either permitted form.</span>
+
+<span class="sd">    RFC 9110 allows delta-seconds (``120``) or an HTTP-date</span>
+<span class="sd">    (``Wed, 21 Oct 2026 07:28:00 GMT``); both appear in the wild. An absent,</span>
+<span class="sd">    malformed or already-elapsed value yields ``None`` / ``0.0`` rather than an</span>
+<span class="sd">    exception — a bad hint must never turn into a second failure on top of the</span>
+<span class="sd">    one being reported.</span>
+<span class="sd">    """</span>
+    <span class="n">headers</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="s2">"headers"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Retry-After"</span><span class="p">)</span> <span class="k">if</span> <span class="n">headers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">raw</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">raw</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">stamp</span> <span class="o">=</span> <span class="n">email</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">parsedate_to_datetime</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">stamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">stamp</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># an HTTP-date without a zone is GMT</span>
+        <span class="n">stamp</span> <span class="o">=</span> <span class="n">stamp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="p">(</span><span class="n">stamp</span> <span class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">))</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_status_error</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SatCheckerError</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Classify an HTTP status response as a response or a transport failure.</span>
+
+<span class="sd">    An HTTP status means the service *answered*, so it is not automatically a</span>
+<span class="sd">    transport failure — but it is only worth trying a different endpoint when the</span>
+<span class="sd">    server was rejecting this particular request rather than failing wholesale:</span>
+
+<span class="sd">    * 4xx (except 429) — this individual request was rejected.</span>
+<span class="sd">    * 429 — the service is asking this client to back off, and says so about the</span>
+<span class="sd">      client rather than about the satellite requested.</span>
+<span class="sd">    * 5xx — the service is failing server-side.</span>
+<span class="sd">    """</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="s2">"code"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">detail</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"SatChecker returned HTTP </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">error</span><span class="o">.</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">_BACKOFF_STATUSES</span><span class="p">:</span>
+        <span class="n">retry_after</span> <span class="o">=</span> <span class="n">_retry_after_seconds</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+        <span class="n">hint</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"; it asks for </span><span class="si">{</span><span class="n">retry_after</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> s before the next request"</span>
+            <span class="k">if</span> <span class="n">retry_after</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">""</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">SatCheckerRateLimitError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"SatChecker returned HTTP </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2"> — it is rate-limiting this "</span>
+            <span class="sa">f</span><span class="s2">"client</span><span class="si">{</span><span class="n">hint</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">error</span><span class="o">.</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="n">retry_after</span><span class="o">=</span><span class="n">retry_after</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="mi">400</span> <span class="o">&lt;=</span> <span class="n">status</span> <span class="o">&lt;</span> <span class="mi">500</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span><span class="n">detail</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">SatCheckerTransportError</span><span class="p">(</span><span class="n">detail</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_http_get</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">REQUEST_TIMEOUT</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="n">req</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">Request</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"User-Agent"</span><span class="p">:</span> <span class="n">user_agent</span><span class="p">()})</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">req</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span> <span class="k">as</span> <span class="n">resp</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">resp</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">HTTPError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># Must precede URLError: HTTPError subclasses it, and unlike its siblings</span>
+        <span class="c1"># it means the service replied rather than that it could not be reached.</span>
+        <span class="k">raise</span> <span class="n">_status_error</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="k">except</span> <span class="p">(</span>
+        <span class="n">urllib</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">URLError</span><span class="p">,</span>
+        <span class="ne">TimeoutError</span><span class="p">,</span>
+        <span class="ne">OSError</span><span class="p">,</span>
+        <span class="n">http</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">HTTPException</span><span class="p">,</span>
+    <span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">SatCheckerTransportError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"SatChecker request failed (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_json</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Parse a JSON response, wrapping malformed payloads as ``SatCheckerError``."""</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"SatChecker returned invalid JSON (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_as_object</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the JSON object carrying the response fields.</span>
+
+<span class="sd">    SatChecker sometimes wraps the payload in a single-element list. An empty list</span>
+<span class="sd">    or a scalar is a malformed response for the endpoints that read named fields,</span>
+<span class="sd">    so raise ``SatCheckerError`` rather than letting a raw ``IndexError`` /</span>
+<span class="sd">    ``AttributeError`` escape.</span>
+<span class="sd">    """</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="n">payload</span> <span class="k">else</span> <span class="n">payload</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"SatChecker returned an unexpected response shape (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_checked_ids</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Satellite IDs from a normalised frame, as usable integers.</span>
+
+<span class="sd">    Shared by both kinds: whatever the record format, an ID that is absent,</span>
+<span class="sd">    non-numeric, non-finite or fractional makes the row unusable in the same way</span>
+<span class="sd">    — a fractional ID would silently truncate to a *different* satellite, and an</span>
+<span class="sd">    infinity raises inside ``astype``.</span>
+<span class="sd">    """</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ids</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">])</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"SatChecker response has non-numeric satellite IDs: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="k">if</span> <span class="n">ids</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+            <span class="s2">"SatChecker response is missing satellite IDs (satellite_id)"</span>
+        <span class="p">)</span>
+    <span class="c1"># Require finite integers before casting: a fractional ID would silently</span>
+    <span class="c1"># truncate to a different satellite, and infinities raise inside astype().</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ids</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span><span class="s2">"SatChecker response has non-finite satellite IDs"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ids</span> <span class="o">!=</span> <span class="n">ids</span><span class="o">.</span><span class="n">round</span><span class="p">())</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">bad</span> <span class="o">=</span> <span class="n">ids</span><span class="p">[</span><span class="n">ids</span> <span class="o">!=</span> <span class="n">ids</span><span class="o">.</span><span class="n">round</span><span class="p">()]</span><span class="o">.</span><span class="n">unique</span><span class="p">()[:</span><span class="mi">5</span><span class="p">]</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"SatChecker response has non-integer satellite IDs: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">bad</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ids</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">OverflowError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"SatChecker satellite IDs are not usable: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_project</span><span class="p">(</span><span class="n">records</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Reduce a raw frame to *columns*, stamping the record kind onto every row.</span>
+
+<span class="sd">    Missing columns are filled rather than raising, so a response that simply</span>
+<span class="sd">    omits an optional field stays usable; the required ones are checked by the</span>
+<span class="sd">    per-kind normalisers below.</span>
+<span class="sd">    """</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">records</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="c1"># Stated rather than inferred. Inference exists for user-supplied files that</span>
+    <span class="c1"># cannot carry the field; a response we parsed ourselves knows what it is.</span>
+    <span class="n">df</span><span class="p">[</span><span class="n">KIND_FIELD</span><span class="p">]</span> <span class="o">=</span> <span class="n">kind</span>
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalise</span><span class="p">(</span><span class="n">records</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Rename SatChecker fields to the normalised TLE columns.</span>
+
+<span class="sd">    Response rows are validated here so schema problems surface as</span>
+<span class="sd">    :class:`SatCheckerError` (the module's error contract) rather than as raw</span>
+<span class="sd">    pandas exceptions: satellite IDs must be present and numeric, and both TLE</span>
+<span class="sd">    lines must be present.</span>
+<span class="sd">    """</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">_project</span><span class="p">(</span><span class="n">records</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">_FIELD_RENAME</span><span class="p">),</span> <span class="n">TLE_COLUMNS</span><span class="p">,</span> <span class="n">KIND_TLE</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_checked_ids</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"TLE_LINE1"</span><span class="p">,</span> <span class="s2">"TLE_LINE2"</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"SatChecker response is missing </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2"> values"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_lift_orbital_elements</span><span class="p">(</span><span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Flatten each row's nested ``orbital_elements`` object onto the row itself.</span>
+
+<span class="sd">    SatChecker nests the elements one level down and already names them in OMM</span>
+<span class="sd">    style, so this is a move rather than a translation. Doing it before the</span>
+<span class="sd">    frame is built keeps a nested ``dict`` out of a pandas cell, where it would</span>
+<span class="sd">    survive every column check and only fail much later.</span>
+<span class="sd">    """</span>
+    <span class="n">lifted</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">nested</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"orbital_elements"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nested</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"SatChecker OMM row has no orbital_elements object (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">nested</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+        <span class="n">flat</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s2">"orbital_elements"</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">_OMM_LIFTED_FIELDS</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">nested</span><span class="p">:</span>
+                <span class="n">flat</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">nested</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+        <span class="n">lifted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flat</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">lifted</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_normalise_omm</span><span class="p">(</span><span class="n">records</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Rename SatChecker fields to the normalised OMM columns.</span>
+
+<span class="sd">    The same contract as :func:`_normalise` — schema problems surface as</span>
+<span class="sd">    :class:`SatCheckerError` — over a different required set. There is no</span>
+<span class="sd">    checksum and no second copy of the identifier to verify here; range and</span>
+<span class="sd">    finiteness checks on the elements happen in</span>
+<span class="sd">    :mod:`satchecker_client.records`, which is also where the reasoning about</span>
+<span class="sd">    that gap lives.</span>
+<span class="sd">    """</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">_project</span><span class="p">(</span><span class="n">records</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">_FIELD_RENAME_OMM</span><span class="p">),</span> <span class="n">OMM_COLUMNS</span><span class="p">,</span> <span class="n">KIND_OMM</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"NORAD_CAT_ID"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_checked_ids</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"EPOCH"</span><span class="p">,</span> <span class="o">*</span><span class="n">OMM_ELEMENT_COLUMNS</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"SatChecker response is missing </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2"> values"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_fetch_nearest_rows</span><span class="p">(</span><span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">epoch_jd</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Row dicts from one of the ``get-nearest-*`` endpoints, plus the URL used.</span>
+
+<span class="sd">    Returns ``(None, url)`` when the service has no record for the satellite —</span>
+<span class="sd">    which it signals either as an empty top-level list or as an empty</span>
+<span class="sd">    ``orbital_data``, both observed. Note that "no record" here means *no record</span>
+<span class="sd">    at all*: neither endpoint reports that it has nothing near the epoch asked</span>
+<span class="sd">    for. ``get-nearest-omm`` answers a 2021 request with its earliest 2026</span>
+<span class="sd">    record. Judging the epoch is the caller's job.</span>
+<span class="sd">    """</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">BASE_URL</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">endpoint</span><span class="si">}</span><span class="s2">/?"</span> <span class="o">+</span> <span class="n">urllib</span><span class="o">.</span><span class="n">parse</span><span class="o">.</span><span class="n">urlencode</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">norad_id</span><span class="p">),</span> <span class="s2">"id_type"</span><span class="p">:</span> <span class="s2">"catalog"</span><span class="p">,</span> <span class="s2">"epoch"</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">epoch_jd</span><span class="p">))}</span>
+    <span class="p">)</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">_load_json</span><span class="p">(</span><span class="n">_http_get</span><span class="p">(</span><span class="n">url</span><span class="p">),</span> <span class="n">url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">payload</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">url</span>  <span class="c1"># empty list == no record for this satellite</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="n">_as_object</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"orbital_data"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">obj</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tle_data"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">url</span>
+    <span class="c1"># The endpoint normally returns a list of row objects, but accepting a single</span>
+    <span class="c1"># row object costs nothing and keeps pandas' raw "all scalar values" ValueError</span>
+    <span class="c1"># from escaping the client's SatCheckerError contract.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="n">rows</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"SatChecker returned unexpected </span><span class="si">{</span><span class="n">endpoint</span><span class="si">}</span><span class="s2"> rows (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span><span class="p">,</span> <span class="n">url</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_frame</span><span class="p">(</span><span class="n">rows</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_records</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">SatCheckerResponseError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"SatChecker </span><span class="si">{</span><span class="n">endpoint</span><span class="si">}</span><span class="s2"> rows could not be read (</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+
+<div class="viewcode-block" id="fetch_nearest_tle">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.fetch_nearest_tle">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_nearest_tle</span><span class="p">(</span><span class="n">norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">epoch_jd</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Fetch the single TLE nearest *epoch_jd* for one satellite.</span>
+
+<span class="sd">    Returns an empty DataFrame if SatChecker has no record for the satellite.</span>
+<span class="sd">    Note that the TLE archive is frozen at 2026-07-11, so for any observation</span>
+<span class="sd">    after that this returns the last TLE ever published for the satellite,</span>
+<span class="sd">    however far from the requested epoch that is.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span><span class="p">,</span> <span class="n">url</span> <span class="o">=</span> <span class="n">_fetch_nearest_rows</span><span class="p">(</span><span class="s2">"get-nearest-tle"</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">,</span> <span class="n">epoch_jd</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rows</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_normalise</span><span class="p">(</span><span class="n">_frame</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="s2">"get-nearest-tle"</span><span class="p">,</span> <span class="n">url</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="fetch_nearest_omm">
+<a class="viewcode-back" href="../../api.html#satchecker_client.client.fetch_nearest_omm">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_nearest_omm</span><span class="p">(</span><span class="n">norad_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">epoch_jd</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Fetch the single OMM element set nearest *epoch_jd* for one satellite.</span>
+
+<span class="sd">    Returns an empty DataFrame if SatChecker has no record for the satellite.</span>
+<span class="sd">    The OMM archive begins at the 2026-07-12 handover, and a request for an</span>
+<span class="sd">    earlier epoch is answered with its *earliest* record rather than with</span>
+<span class="sd">    nothing — so a pre-handover caller gets a confident-looking element set that</span>
+<span class="sd">    may be years off. Rejecting that is the caller's age ceiling, not this</span>
+<span class="sd">    function's — it reports what the service returned.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span><span class="p">,</span> <span class="n">url</span> <span class="o">=</span> <span class="n">_fetch_nearest_rows</span><span class="p">(</span><span class="s2">"get-nearest-omm"</span><span class="p">,</span> <span class="n">norad_id</span><span class="p">,</span> <span class="n">epoch_jd</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rows</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="n">lifted</span> <span class="o">=</span> <span class="n">_lift_orbital_elements</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_normalise_omm</span><span class="p">(</span><span class="n">_frame</span><span class="p">(</span><span class="n">lifted</span><span class="p">,</span> <span class="s2">"get-nearest-omm"</span><span class="p">,</span> <span class="n">url</span><span class="p">))</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025-2026, Chris Finlay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

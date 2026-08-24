@@ -1,0 +1,798 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; satchecker-client 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Publishing the Documentation" href="readthedocs.html" />
+    <link rel="prev" title="Usage guide" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            satchecker-client
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#identify-your-application">Identify your application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#two-archives-one-handover">Two archives, one handover</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#fetching-records">Fetching records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#batches">Batches</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#asking-about-a-record">Asking about a record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#what-validation-guarantees-per-kind">What validation guarantees, per kind</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#caching">Caching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#what-stays-with-the-caller">What stays with the caller</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-satchecker_client">Package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-satchecker_client.client">Client</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.HANDOVER_JD"><code class="docutils literal notranslate"><span class="pre">HANDOVER_JD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.SatCheckerError"><code class="docutils literal notranslate"><span class="pre">SatCheckerError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.SatCheckerRateLimitError"><code class="docutils literal notranslate"><span class="pre">SatCheckerRateLimitError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.SatCheckerResponseError"><code class="docutils literal notranslate"><span class="pre">SatCheckerResponseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.SatCheckerTransportError"><code class="docutils literal notranslate"><span class="pre">SatCheckerTransportError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.fetch_nearest_omm"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_omm()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.fetch_nearest_tle"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_tle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.set_client_identifier"><code class="docutils literal notranslate"><span class="pre">set_client_identifier()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.client.user_agent"><code class="docutils literal notranslate"><span class="pre">user_agent()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-satchecker_client.service">Service</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.service.NearestBatchResult"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#satchecker_client.service.NearestBatchResult.outage"><code class="docutils literal notranslate"><span class="pre">NearestBatchResult.outage</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.service.RESPONSE_WALL_THRESHOLD"><code class="docutils literal notranslate"><span class="pre">RESPONSE_WALL_THRESHOLD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.service.fetch_nearest_batch"><code class="docutils literal notranslate"><span class="pre">fetch_nearest_batch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.service.nearest_endpoints_for"><code class="docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.service.store_or_warn"><code class="docutils literal notranslate"><span class="pre">store_or_warn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.service.validated_records"><code class="docutils literal notranslate"><span class="pre">validated_records()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-satchecker_client.records">Records</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.COMMON_COLUMNS"><code class="docutils literal notranslate"><span class="pre">COMMON_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.KIND_FIELD"><code class="docutils literal notranslate"><span class="pre">KIND_FIELD</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.OMM_ELEMENT_COLUMNS"><code class="docutils literal notranslate"><span class="pre">OMM_ELEMENT_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.RecordKindError"><code class="docutils literal notranslate"><span class="pre">RecordKindError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.TLE_LINE_COLUMNS"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.norad_id_of"><code class="docutils literal notranslate"><span class="pre">norad_id_of()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.parse_omm_epoch_jd"><code class="docutils literal notranslate"><span class="pre">parse_omm_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.record_elements"><code class="docutils literal notranslate"><span class="pre">record_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.record_epoch_jd"><code class="docutils literal notranslate"><span class="pre">record_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.record_kind"><code class="docutils literal notranslate"><span class="pre">record_kind()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.records.validate_record"><code class="docutils literal notranslate"><span class="pre">validate_record()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-satchecker_client.tle_parse">TLE parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.ELEMENT_FIELDS"><code class="docutils literal notranslate"><span class="pre">ELEMENT_FIELDS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.TLE_LINE_LENGTH"><code class="docutils literal notranslate"><span class="pre">TLE_LINE_LENGTH</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.decode_norad_id"><code class="docutils literal notranslate"><span class="pre">decode_norad_id()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.parse_tle_elements"><code class="docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.semimajor_axis_km"><code class="docutils literal notranslate"><span class="pre">semimajor_axis_km()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.tle_checksum"><code class="docutils literal notranslate"><span class="pre">tle_checksum()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.tle_epoch_jd"><code class="docutils literal notranslate"><span class="pre">tle_epoch_jd()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.validate_elements"><code class="docutils literal notranslate"><span class="pre">validate_elements()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.validate_tle_line"><code class="docutils literal notranslate"><span class="pre">validate_tle_line()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.tle_parse.validate_tle_pair"><code class="docutils literal notranslate"><span class="pre">validate_tle_pair()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-satchecker_client.cache">Cache</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.CacheValidationError"><code class="docutils literal notranslate"><span class="pre">CacheValidationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.REQUIRED_COLUMNS"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND"><code class="docutils literal notranslate"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.SCHEMA_VERSION"><code class="docutils literal notranslate"><span class="pre">SCHEMA_VERSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.TextOrbitCache"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#satchecker_client.cache.TextOrbitCache.get"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#satchecker_client.cache.TextOrbitCache.store"><code class="docutils literal notranslate"><span class="pre">TextOrbitCache.store()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#satchecker_client.cache.read_legacy_tle_records"><code class="docutils literal notranslate"><span class="pre">read_legacy_tle_records()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="readthedocs.html">Publishing the Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs.html#versions">Versions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="readthedocs.html#publishing-a-release-version">Publishing a release version</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs.html#one-time-project-setup">One-time project setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="readthedocs.html#building-the-docs-locally">Building the docs locally</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">satchecker-client</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>The package is split by responsibility; everything public is re-exported at the
+top level, so <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">satchecker_client</span> <span class="pre">as</span> <span class="pre">sc</span></code> is the only import most
+callers need.</p>
+<section id="module-satchecker_client">
+<span id="package"></span><h2>Package<a class="headerlink" href="#module-satchecker_client" title="Link to this heading"></a></h2>
+<p>Client for the IAU CPS SatChecker orbital-record service, split by responsibility.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#module-satchecker_client.client" title="satchecker_client.client"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.client</span></code></a> — HTTP transport and response normalisation
+for both nearest-record endpoints; standard library plus pandas, nothing else.</p></li>
+<li><p><a class="reference internal" href="#module-satchecker_client.tle_parse" title="satchecker_client.tle_parse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.tle_parse</span></code></a> — TLE line parsing, and the element range
+checks both record kinds share.</p></li>
+<li><p><a class="reference internal" href="#module-satchecker_client.records" title="satchecker_client.records"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.records</span></code></a> — what a record is, when it is valid, and
+what it means; the only place either format is named.</p></li>
+<li><p><a class="reference internal" href="#module-satchecker_client.cache" title="satchecker_client.cache"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.cache</span></code></a> — validated per-NORAD record storage.</p></li>
+<li><p><a class="reference internal" href="#module-satchecker_client.service" title="satchecker_client.service"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.service</span></code></a> — endpoint selection, bounded concurrent
+acquisition, response validation, and resilient cache writes.</p></li>
+</ul>
+<p>What this package deliberately does not decide: which record a given observation
+should use, how old a record may be before it is refused, or how a local archive
+ranks against the service. Those are application policy, and they live in the
+caller. TABASCAL, the original consumer, keeps them in its <code class="docutils literal notranslate"><span class="pre">tabascal.orbit</span></code>.</p>
+<p>The names most callers need are re-exported here.</p>
+</section>
+<section id="module-satchecker_client.client">
+<span id="client"></span><h2>Client<a class="headerlink" href="#module-satchecker_client.client" title="Link to this heading"></a></h2>
+<p>Client for the IAU CPS SatChecker nearest-element service.</p>
+<p>Self-contained transport layer: this module talks to the SatChecker HTTP API and
+returns pandas DataFrames with a normalised column set. No account or credentials
+are required. It knows nothing about caching, cache-key policy, or
+source-precedence policy — the first lives in <a class="reference internal" href="#module-satchecker_client.cache" title="satchecker_client.cache"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.cache</span></code></a> and
+the rest are the caller’s.</p>
+<p>Two endpoints, because SatChecker keeps two archives:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tools/get-nearest-tle/</span></code></dt><dd><p>The TLE whose epoch is closest to the requested one. This archive is frozen:
+its last record is from 2026-07-11 and it will never gain another.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/tools/get-nearest-omm/</span></code></dt><dd><p>The OMM element set whose epoch is closest to the requested one. This
+archive begins at the handover, twelve hours after the TLE archive ends, and
+grows forward only.</p>
+</dd>
+</dl>
+<p>SatChecker 1.7.0 made the split because Celestrak is dropping Alpha-5 notation
+to preserve the original TLE format, which leaves catalogue numbers above 99999
+with no TLE representation at all. Which endpoint to ask is
+<a class="reference internal" href="#module-satchecker_client.service" title="satchecker_client.service"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.service</span></code></a>’s decision, not this module’s.</p>
+<p>Neither archive reports “I have nothing that old”. <code class="docutils literal notranslate"><span class="pre">get-nearest-omm</span></code> answers a
+2021 request with its earliest 2026-07-11 record, 4.6 years off epoch, and says
+nothing about the discrepancy. Callers are expected to check the epoch they got
+against the epoch they asked for; this module only reports what came back.</p>
+<p>Returned frames use OMM-style column names throughout. Both kinds carry
+<code class="docutils literal notranslate"><span class="pre">NORAD_CAT_ID</span></code>, <code class="docutils literal notranslate"><span class="pre">OBJECT_NAME</span></code>, <code class="docutils literal notranslate"><span class="pre">EPOCH</span></code>, <code class="docutils literal notranslate"><span class="pre">DATA_SOURCE</span></code>,
+<code class="docutils literal notranslate"><span class="pre">DATE_COLLECTED</span></code> and <code class="docutils literal notranslate"><span class="pre">RECORD_KIND</span></code>; TLE frames add <code class="docutils literal notranslate"><span class="pre">TLE_LINE1</span></code> /
+<code class="docutils literal notranslate"><span class="pre">TLE_LINE2</span></code>, and OMM frames add <code class="docutils literal notranslate"><span class="pre">OBJECT_ID</span></code> and the seven element columns.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.client.HANDOVER_JD">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">HANDOVER_JD</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2461233.5</span></span><a class="headerlink" href="#satchecker_client.client.HANDOVER_JD" title="Link to this definition"></a></dt>
+<dd><p>Where SatChecker stopped publishing TLEs and started publishing OMM. Its
+1.7.0 changelog: “TLEs for dates before 2026-07-12 will continue to be used as
+is with no changes to any of the related endpoints, but OMM will be used for
+everything going forward.”</p>
+<p>A <em>hint</em>, not a contract. It picks which endpoint to ask first and nothing
+else; being wrong about it costs one extra request, because the caller falls
+back to the other endpoint when the first yields nothing acceptable. That
+matters because the boundary can move: SatChecker now sources OMM from
+Space-Track as well as Celestrak, and Space-Track’s OMM history runs years
+deep, so a backfill is plausible. A hardcoded permanent cutoff would keep
+silently preferring TLEs for periods where better OMM had appeared.</p>
+<p>Deliberately not a config key: it is a property of the service, not of a run.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="satchecker_client.client.SatCheckerError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">SatCheckerError</span></span><a class="reference internal" href="_modules/satchecker_client/client.html#SatCheckerError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.SatCheckerError" title="Link to this definition"></a></dt>
+<dd><p>Raised when SatChecker cannot be reached or returns no usable data.</p>
+<p>The two subclasses below separate the failures a caller can usefully route
+around from the ones it cannot; catching this base class treats them alike and
+is only appropriate at a top-level boundary.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="satchecker_client.client.SatCheckerRateLimitError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">SatCheckerRateLimitError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retry_after</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/satchecker_client/client.html#SatCheckerRateLimitError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.SatCheckerRateLimitError" title="Link to this definition"></a></dt>
+<dd><p>The service asked this client to slow down (HTTP 429).</p>
+<p>A <em>transport</em> error by classification, because the thing it tells us is about
+the service and not about the satellite we happened to ask for: the next
+request is unwelcome too. Being a subclass is what stops a batch dead on the
+first 429 instead of working through the rest of the list.</p>
+<p><code class="docutils literal notranslate"><span class="pre">retry_after</span></code> carries the service’s own <code class="docutils literal notranslate"><span class="pre">Retry-After</span></code> hint in seconds when
+it sends one, so the message can say when the run is worth repeating. This
+package reports the hint rather than sleeping on it: an unattended run that
+quietly blocks for an interval the service chose is worse than one that stops
+and says why. Whether to wait is the caller’s call.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="satchecker_client.client.SatCheckerResponseError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">SatCheckerResponseError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/satchecker_client/client.html#SatCheckerResponseError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.SatCheckerResponseError" title="Link to this definition"></a></dt>
+<dd><p>The service answered, but the response is unusable: malformed or incomplete.</p>
+<p>Per-request, not whole-service: the host is up and answering, so it says
+nothing about the other satellites. Callers record it against the one ID and
+carry on with the rest of the batch.</p>
+<p><code class="docutils literal notranslate"><span class="pre">status</span></code> is the HTTP status when the failure came from one (<code class="docutils literal notranslate"><span class="pre">None</span></code> for a
+malformed body). A run of identical statuses with no success in between is
+how a caller recognises that “per-request” has stopped being true — a WAF
+answering 403 to everything, or a renamed endpoint answering 404.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="satchecker_client.client.SatCheckerTransportError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">SatCheckerTransportError</span></span><a class="reference internal" href="_modules/satchecker_client/client.html#SatCheckerTransportError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.SatCheckerTransportError" title="Link to this definition"></a></dt>
+<dd><p>The service could not be reached: connection, TLS, timeout or mid-read failure.</p>
+<p>Whole-service, not per-request: every other satellite’s lookup would go to the
+same unreachable host. <a class="reference internal" href="#satchecker_client.service.fetch_nearest_batch" title="satchecker_client.service.fetch_nearest_batch"><code class="xref py py-func docutils literal notranslate"><span class="pre">satchecker_client.service.fetch_nearest_batch()</span></code></a>
+treats the first one as the answer for the whole batch and abandons the
+requests still queued, rather than paying the request timeout once per
+configured satellite to learn the same thing.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.client.fetch_nearest_omm">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">fetch_nearest_omm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">norad_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch_jd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/satchecker_client/client.html#fetch_nearest_omm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.fetch_nearest_omm" title="Link to this definition"></a></dt>
+<dd><p>Fetch the single OMM element set nearest <em>epoch_jd</em> for one satellite.</p>
+<p>Returns an empty DataFrame if SatChecker has no record for the satellite.
+The OMM archive begins at the 2026-07-12 handover, and a request for an
+earlier epoch is answered with its <em>earliest</em> record rather than with
+nothing — so a pre-handover caller gets a confident-looking element set that
+may be years off. Rejecting that is the caller’s age ceiling, not this
+function’s — it reports what the service returned.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.client.fetch_nearest_tle">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">fetch_nearest_tle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">norad_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch_jd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/satchecker_client/client.html#fetch_nearest_tle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.fetch_nearest_tle" title="Link to this definition"></a></dt>
+<dd><p>Fetch the single TLE nearest <em>epoch_jd</em> for one satellite.</p>
+<p>Returns an empty DataFrame if SatChecker has no record for the satellite.
+Note that the TLE archive is frozen at 2026-07-11, so for any observation
+after that this returns the last TLE ever published for the satellite,
+however far from the requested epoch that is.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.client.set_client_identifier">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">set_client_identifier</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">identifier</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/satchecker_client/client.html#set_client_identifier"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.set_client_identifier" title="Link to this definition"></a></dt>
+<dd><p>Name the consuming application in this package’s outgoing User-Agent.</p>
+<p>Without this every caller looks identical to the SatChecker operators, which
+matters because the library is shared: a burst of traffic they want to ask
+about should be traceable to the application that made it rather than to the
+client library that all of them use. Call it once at import or startup:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">satchecker_client</span><span class="o">.</span><span class="n">set_client_identifier</span><span class="p">(</span><span class="s2">"tabascal/0.1.0"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> to clear it.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.client.user_agent">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.client.</span></span><span class="sig-name descname"><span class="pre">user_agent</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/satchecker_client/client.html#user_agent"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.client.user_agent" title="Link to this definition"></a></dt>
+<dd><p>The full User-Agent sent with each request, caller identity included.</p>
+</dd></dl>
+
+</section>
+<section id="module-satchecker_client.service">
+<span id="service"></span><h2>Service<a class="headerlink" href="#module-satchecker_client.service" title="Link to this heading"></a></h2>
+<p>Bounded concurrent acquisition built on the SatChecker HTTP client.</p>
+<p>This module owns provider-specific orchestration: bounded concurrency, failure
+collection, response-row filtering, and resilient cache writes.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="satchecker_client.service.NearestBatchResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.service.</span></span><span class="sig-name descname"><span class="pre">NearestBatchResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">records</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~satchecker_client.client.SatCheckerError]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#satchecker_client.client.SatCheckerError" title="satchecker_client.client.SatCheckerError"><span class="pre">SatCheckerError</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/satchecker_client/service.html#NearestBatchResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.service.NearestBatchResult" title="Link to this definition"></a></dt>
+<dd><p>Validated nearest-record rows and per-ID request failures.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="satchecker_client.service.NearestBatchResult.outage">
+<span class="sig-name descname"><span class="pre">outage</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#satchecker_client.client.SatCheckerError" title="satchecker_client.client.SatCheckerError"><span class="pre">SatCheckerError</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#satchecker_client.service.NearestBatchResult.outage" title="Link to this definition"></a></dt>
+<dd><p>Set when the batch stopped early because the service itself was the
+problem — unreachable, rate-limiting, or answering every request alike.
+Distinct from <code class="docutils literal notranslate"><span class="pre">errors</span></code>, which is per-ID and says nothing about whether
+another request is worth making. A caller that would otherwise retry
+against a different endpoint must check this first: the service being
+down is not a reason to ask it a different question.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.service.RESPONSE_WALL_THRESHOLD">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.service.</span></span><span class="sig-name descname"><span class="pre">RESPONSE_WALL_THRESHOLD</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></span><a class="headerlink" href="#satchecker_client.service.RESPONSE_WALL_THRESHOLD" title="Link to this definition"></a></dt>
+<dd><p>Identical per-request rejections, with no success in between, before the batch
+concludes it is facing a wall rather than that many absent satellites. A 4xx is
+normally per-request — “no such catalogue entry” is a legitimate 404 — so this
+has to be high enough that a handful of genuinely unknown IDs at the head of a
+list cannot trip it, and low enough that a service rejecting everything is not
+asked once per configured satellite.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.service.fetch_nearest_batch">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.service.</span></span><span class="sig-name descname"><span class="pre">fetch_nearest_batch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">norad_ids:</span> <span class="pre">list[int],</span> <span class="pre">epoch_jd:</span> <span class="pre">float,</span> <span class="pre">*,</span> <span class="pre">fetch_nearest:</span> <span class="pre">~typing.Callable[[int,</span> <span class="pre">float],</span> <span class="pre">~pandas.DataFrame]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">fetch_nearest_tle&gt;,</span> <span class="pre">endpoint:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'nearest-TLE',</span> <span class="pre">max_workers:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5,</span> <span class="pre">log:</span> <span class="pre">~typing.Callable[[str],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;built-in</span> <span class="pre">function</span> <span class="pre">print&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#satchecker_client.service.NearestBatchResult" title="satchecker_client.service.NearestBatchResult"><span class="pre">NearestBatchResult</span></a></span></span><a class="reference internal" href="_modules/satchecker_client/service.html#fetch_nearest_batch"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.service.fetch_nearest_batch" title="Link to this definition"></a></dt>
+<dd><p>Fetch exact-epoch nearest records with at most <em>max_workers</em> in flight.</p>
+<p><em>fetch_nearest</em> is one of the client’s two endpoint functions and <em>endpoint</em>
+is its label for logs; <a class="reference internal" href="#satchecker_client.service.nearest_endpoints_for" title="satchecker_client.service.nearest_endpoints_for"><code class="xref py py-func docutils literal notranslate"><span class="pre">nearest_endpoints_for()</span></code></a> pairs them. Everything
+below is identical for either, because the two endpoints differ only in what
+they return, never in how they fail.</p>
+<p>Requests are submitted incrementally — the in-flight set is topped back up as
+each one lands — rather than queued all at once. That is what makes the
+outage bound hold: a transport failure means the service itself is unreachable
+(or has asked us to stop), so every remaining ID would be a request we already
+know is unwelcome, and nothing further is sent. At most <em>max_workers</em> requests
+can be in flight when the first failure is seen, so that is the most an outage
+can ever cost, whatever the worker count and however fast the failures return.</p>
+<p>Queueing everything up front and cancelling the remainder does not achieve
+this: with fast failures — a refused connection, or an HTTP 429 arriving in
+one round trip — the pool’s workers drain the queue faster than the cancel
+can catch it, and a large run still hits an already-failing service hundreds
+of times.</p>
+<p>A <em>response</em> failure is per-request — the service is answering — so it is
+recorded and the remaining IDs proceed.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.service.nearest_endpoints_for">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.service.</span></span><span class="sig-name descname"><span class="pre">nearest_endpoints_for</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch_jd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/satchecker_client/service.html#nearest_endpoints_for"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.service.nearest_endpoints_for" title="Link to this definition"></a></dt>
+<dd><p>The endpoints to try for <em>epoch_jd</em>, best first.</p>
+<p>SatChecker’s two archives do not overlap: the TLE one is frozen at
+2026-07-11 and the OMM one begins twelve hours later. So the observation
+epoch decides which to ask, and <code class="xref py py-data docutils literal notranslate"><span class="pre">client.HANDOVER_JD</span></code> is the dividing
+line.</p>
+<p>Both are always returned, in order, because neither endpoint reports “I have
+nothing that near”. <code class="docutils literal notranslate"><span class="pre">get-nearest-omm</span></code> answers a 2021 request with its
+earliest 2026 record; <code class="docutils literal notranslate"><span class="pre">get-nearest-tle</span></code> answers a 2027 request with the
+last TLE ever published. The caller cannot tell a good answer from a clamped
+one without checking the epoch it got, and when the answer turns out to be
+unusable the <em>other</em> endpoint is where the record actually lives. Trying it
+costs one request and is what makes the handover date a hint rather than a
+cutoff — including if SatChecker ever backfills OMM history, which would
+otherwise leave us silently preferring TLEs for periods with better OMM.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.service.store_or_warn">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.service.</span></span><span class="sig-name descname"><span class="pre">store_or_warn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">action:</span> <span class="pre">~typing.Callable[[],</span> <span class="pre">None],</span> <span class="pre">target:</span> <span class="pre">~pathlib.Path,</span> <span class="pre">what:</span> <span class="pre">str,</span> <span class="pre">log:</span> <span class="pre">~typing.Callable[[str],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;built-in</span> <span class="pre">function</span> <span class="pre">print&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="_modules/satchecker_client/service.html#store_or_warn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.service.store_or_warn" title="Link to this definition"></a></dt>
+<dd><p>Perform a cache write without losing fetched data to an I/O failure.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.service.validated_records">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.service.</span></span><span class="sig-name descname"><span class="pre">validated_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">records:</span> <span class="pre">~pandas.DataFrame,</span> <span class="pre">context:</span> <span class="pre">str,</span> <span class="pre">log:</span> <span class="pre">~typing.Callable[[str],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;built-in</span> <span class="pre">function</span> <span class="pre">print&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/satchecker_client/service.html#validated_records"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.service.validated_records" title="Link to this definition"></a></dt>
+<dd><p>Return SatChecker rows that validate and belong to the ID they claim.</p>
+<p>Kind-agnostic: a TLE row must parse, checksum and carry the same satellite
+identifier in both lines <em>and</em> in the row; an OMM row must carry finite,
+in-range elements and a plausible epoch. The identifier cross-check is
+vacuous for OMM — see <a class="reference internal" href="#satchecker_client.records.validate_record" title="satchecker_client.records.validate_record"><code class="xref py py-func docutils literal notranslate"><span class="pre">satchecker_client.records.validate_record()</span></code></a>.</p>
+</dd></dl>
+
+</section>
+<section id="module-satchecker_client.records">
+<span id="records"></span><h2>Records<a class="headerlink" href="#module-satchecker_client.records" title="Link to this heading"></a></h2>
+<p>Kind dispatch over the two orbital-record formats SatChecker serves.</p>
+<p>SatChecker’s TLE archive is frozen and its OMM archive starts where the TLE one
+stops (see <a class="reference internal" href="#module-satchecker_client.client" title="satchecker_client.client"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.client</span></code></a> for the handover date), so any caller
+spanning the handover has to carry both formats at once. Rather than thread a format flag through the
+policy layer, records stay plain <code class="docutils literal notranslate"><span class="pre">dict</span></code>-alikes and everything format-specific
+is answered here:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">record_kind</span></code></dt><dd><p>Which format a record is in.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">record_epoch_jd</span></code></dt><dd><p>Its epoch as a UTC Julian Date — the number every age policy is measured
+against.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">record_elements</span></code></dt><dd><p>Its OMM-style orbital elements, in the units the trajectory components
+expect.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">validate_record</span></code></dt><dd><p>Whether it is usable at all, returning the NORAD catalogue ID it belongs to.</p>
+</dd>
+</dl>
+<p>Everything above the seams — source precedence, the age ceiling, the
+strictly-fresher incumbency rule — works off <code class="docutils literal notranslate"><span class="pre">epoch_jd</span></code> and an opaque record,
+and does not change.</p>
+<p>Validation is not symmetric between the two kinds, and pretending otherwise
+would be the dangerous move. A TLE carries a modulo-10 checksum over each line
+and a second copy of the satellite identifier, so single-character corruption is
+detectable and a record can be caught belonging to a different satellite than
+the row claims. OMM has neither: one <code class="docutils literal notranslate"><span class="pre">NORAD_CAT_ID</span></code> field with nothing to
+check it against, and element values that parse cleanly whatever they say.
+There is a third loss too — <a class="reference internal" href="#satchecker_client.tle_parse.tle_epoch_jd" title="satchecker_client.tle_parse.tle_epoch_jd"><code class="xref py py-func docutils literal notranslate"><span class="pre">satchecker_client.tle_parse.tle_epoch_jd()</span></code></a>
+exists so a provider’s own epoch field is never trusted, and for OMM there are
+no lines to re-derive it from.</p>
+<p>What is done instead, for OMM only: every element goes through the shared
+<a class="reference internal" href="#satchecker_client.tle_parse.validate_elements" title="satchecker_client.tle_parse.validate_elements"><code class="xref py py-func docutils literal notranslate"><span class="pre">validate_elements()</span></code></a> range and finiteness
+checks, and the epoch must parse as ISO 8601 and land inside an absolute
+plausibility window. That window is not cosmetic. <code class="docutils literal notranslate"><span class="pre">get-nearest-omm</span></code> answers a
+pre-handover request with its <em>earliest</em> record rather than reporting that it
+has none, so a wrong epoch is exactly the failure this format is prone to.</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.records.COMMON_COLUMNS">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">COMMON_COLUMNS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('NORAD_CAT_ID',</span> <span class="pre">'OBJECT_NAME',</span> <span class="pre">'DATA_SOURCE',</span> <span class="pre">'DATE_COLLECTED')</span></span><a class="headerlink" href="#satchecker_client.records.COMMON_COLUMNS" title="Link to this definition"></a></dt>
+<dd><p>Identity and provenance columns both kinds carry.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.records.KIND_FIELD">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">KIND_FIELD</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'RECORD_KIND'</span></span><a class="headerlink" href="#satchecker_client.records.KIND_FIELD" title="Link to this definition"></a></dt>
+<dd><p>Column naming the format explicitly. Optional — see <a class="reference internal" href="#satchecker_client.records.record_kind" title="satchecker_client.records.record_kind"><code class="xref py py-func docutils literal notranslate"><span class="pre">record_kind()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.records.OMM_ELEMENT_COLUMNS">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">OMM_ELEMENT_COLUMNS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('INCLINATION',</span> <span class="pre">'RA_OF_ASC_NODE',</span> <span class="pre">'ECCENTRICITY',</span> <span class="pre">'ARG_OF_PERICENTER',</span> <span class="pre">'MEAN_ANOMALY',</span> <span class="pre">'MEAN_MOTION',</span> <span class="pre">'BSTAR')</span></span><a class="headerlink" href="#satchecker_client.records.OMM_ELEMENT_COLUMNS" title="Link to this definition"></a></dt>
+<dd><p>Element columns an OMM record carries directly, rather than encoding in lines.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="satchecker_client.records.RecordKindError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">RecordKindError</span></span><a class="reference internal" href="_modules/satchecker_client/records.html#RecordKindError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.RecordKindError" title="Link to this definition"></a></dt>
+<dd><p>A record’s format could not be determined, or is not one we handle.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.records.TLE_LINE_COLUMNS">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">TLE_LINE_COLUMNS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('TLE_LINE1',</span> <span class="pre">'TLE_LINE2')</span></span><a class="headerlink" href="#satchecker_client.records.TLE_LINE_COLUMNS" title="Link to this definition"></a></dt>
+<dd><p>The two lines that make a TLE record.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.records.norad_id_of">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">norad_id_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'record'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/satchecker_client/records.html#norad_id_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.norad_id_of" title="Link to this definition"></a></dt>
+<dd><p>The record’s own <code class="docutils literal notranslate"><span class="pre">NORAD_CAT_ID</span></code>, as a positive finite integer.</p>
+<p>A fractional ID would truncate to a <em>different</em> satellite and an infinity
+raises inside the numeric casts downstream, so both are rejected here.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.records.parse_omm_epoch_jd">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">parse_omm_epoch_jd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/satchecker_client/records.html#parse_omm_epoch_jd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.parse_omm_epoch_jd" title="Link to this definition"></a></dt>
+<dd><p>UTC Julian Date of an OMM <code class="docutils literal notranslate"><span class="pre">EPOCH</span></code> field.</p>
+<p>ISO 8601, with or without a trailing <code class="docutils literal notranslate"><span class="pre">Z</span></code> or a UTC offset. The absolute
+plausibility window is checked here rather than at the call site so no path
+can reach the age policy with an epoch that is not a date at all.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.records.record_elements">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">record_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/satchecker_client/records.html#record_elements"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.record_elements" title="Link to this definition"></a></dt>
+<dd><p>OMM-style orbital elements for <em>record</em>, in the components’ units.</p>
+<p>Angles in degrees, mean motion in rev/day, semi-major axis in km. Both kinds
+return the same keys in the same order, and both derive <code class="docutils literal notranslate"><span class="pre">SEMIMAJOR_AXIS</span></code>
+from the mean motion rather than taking a provider’s own value, so the two
+paths cannot disagree on a satellite they both describe.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.records.record_epoch_jd">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">record_epoch_jd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/satchecker_client/records.html#record_epoch_jd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.record_epoch_jd" title="Link to this definition"></a></dt>
+<dd><p>UTC Julian Date of <em>record</em>’s epoch, whichever kind it is.</p>
+<p>For a TLE this re-derives the epoch from line 1 rather than reading any
+<code class="docutils literal notranslate"><span class="pre">EPOCH</span></code> column that happens to be present — that is deliberate and
+long-standing. For an OMM there is nothing to re-derive it from, so the
+provider’s field is parsed and range-checked instead.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.records.record_kind">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">record_kind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/satchecker_client/records.html#record_kind"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.record_kind" title="Link to this definition"></a></dt>
+<dd><p>Which format <em>record</em> is in.</p>
+<p>An explicit <code class="docutils literal notranslate"><span class="pre">RECORD_KIND</span></code> wins. Inferring the rest is not a nicety: the
+documented <code class="docutils literal notranslate"><span class="pre">extra_orbit_dir</span></code> contract is that a Space-Track <code class="docutils literal notranslate"><span class="pre">gp</span></code> /
+<code class="docutils literal notranslate"><span class="pre">gp_history</span></code> JSON export can be dropped in unconverted, and that JSON
+carries no kind field. So a record with TLE lines is a TLE, a record with
+the element columns is an OMM, and anything else is rejected rather than
+guessed at.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.records.validate_record">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.records.</span></span><span class="sig-name descname"><span class="pre">validate_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">record</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/satchecker_client/records.html#validate_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.records.validate_record" title="Link to this definition"></a></dt>
+<dd><p>Fully validate <em>record</em>; return the NORAD catalogue ID it belongs to.</p>
+<p>For a TLE the returned ID is decoded from the <em>lines</em>, so a caller comparing
+it against the row’s own <code class="docutils literal notranslate"><span class="pre">NORAD_CAT_ID</span></code> catches a record filed under the
+wrong satellite. For an OMM there is only one identifier in the record, so
+the same comparison is vacuous — the check does not exist to be made. That
+asymmetry is real and is documented rather than papered over; callers make
+the comparison unconditionally because it costs nothing and is meaningful
+for exactly the kind that can support it.</p>
+<p>Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> on any problem, which callers treat as “reject this
+record and try another source”.</p>
+</dd></dl>
+
+</section>
+<section id="module-satchecker_client.tle_parse">
+<span id="tle-parsing"></span><h2>TLE parsing<a class="headerlink" href="#module-satchecker_client.tle_parse" title="Link to this heading"></a></h2>
+<p>TLE line parsing shared by cache validation and element extraction.</p>
+<p>One parser, two consumers: callers derive OMM-style orbital elements through it,
+and <a class="reference internal" href="#module-satchecker_client.cache" title="satchecker_client.cache"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.cache</span></code></a> validates envelopes through it — so anything
+the element parser consumes is, by construction, exactly what validation
+exercises. Imports only the standard library and this
+package’s small Julian-date helper.</p>
+<p>Satellite identifiers use the Alpha-5 scheme where needed: catalogue numbers
+above 99999 encode the leading digits as a letter (<code class="docutils literal notranslate"><span class="pre">E8493</span></code> -&gt; 148493; the
+letters I and O are excluded to avoid confusion with 1 and 0).</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.ELEMENT_FIELDS">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">ELEMENT_FIELDS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(('INCLINATION',</span> <span class="pre">'inclination'),</span> <span class="pre">('RA_OF_ASC_NODE',</span> <span class="pre">'RAAN'),</span> <span class="pre">('ECCENTRICITY',</span> <span class="pre">'eccentricity'),</span> <span class="pre">('ARG_OF_PERICENTER',</span> <span class="pre">'argument</span> <span class="pre">of</span> <span class="pre">pericenter'),</span> <span class="pre">('MEAN_ANOMALY',</span> <span class="pre">'mean</span> <span class="pre">anomaly'),</span> <span class="pre">('MEAN_MOTION',</span> <span class="pre">'mean</span> <span class="pre">motion'),</span> <span class="pre">('BSTAR',</span> <span class="pre">'BSTAR'))</span></span><a class="headerlink" href="#satchecker_client.tle_parse.ELEMENT_FIELDS" title="Link to this definition"></a></dt>
+<dd><p>OMM-style element columns every record kind must supply, paired with the
+human-readable names the range errors use.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.TLE_LINE_LENGTH">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">TLE_LINE_LENGTH</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">69</span></span><a class="headerlink" href="#satchecker_client.tle_parse.TLE_LINE_LENGTH" title="Link to this definition"></a></dt>
+<dd><p>A TLE line is exactly 69 columns, the last of which is a modulo-10 checksum.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.decode_norad_id">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">decode_norad_id</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#decode_norad_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.decode_norad_id" title="Link to this definition"></a></dt>
+<dd><p>Decode a 5-character TLE satellite field, including Alpha-5 identifiers.</p>
+<p>Plain digits decode directly (<code class="docutils literal notranslate"><span class="pre">&quot;25544&quot;</span></code> -&gt; 25544). Alpha-5 fields carry a
+leading letter worth 10-33 (A-H, J-N, P-Z; I and O are excluded), so
+<code class="docutils literal notranslate"><span class="pre">&quot;E8493&quot;</span></code> -&gt; 148493 and <code class="docutils literal notranslate"><span class="pre">&quot;Z9999&quot;</span></code> -&gt; 339999. Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for
+anything else.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.parse_tle_elements">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">parse_tle_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#parse_tle_elements"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.parse_tle_elements" title="Link to this definition"></a></dt>
+<dd><p>Derive OMM-style orbital elements from a TLE pair.</p>
+<p>Angles are in degrees, mean motion in rev/day and the semi-major axis in km
+— matching the units Space-Track’s OMM reported, so downstream consumers are
+unchanged. <code class="docutils literal notranslate"><span class="pre">SEMIMAJOR_AXIS</span></code> is computed from the mean motion via Kepler’s
+third law (reproduces the Space-Track OMM value). Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">ZeroDivisionError</span></code> for a zero mean motion) on malformed fields.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.semimajor_axis_km">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">semimajor_axis_km</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean_motion_rev_day</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#semimajor_axis_km"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.semimajor_axis_km" title="Link to this definition"></a></dt>
+<dd><p>Semi-major axis in km from a mean motion in rev/day, via Kepler’s third law.</p>
+<p>Reproduces the value Space-Track’s OMM reported, so downstream consumers see
+the same number whichever kind the elements came from. Raises
+<code class="docutils literal notranslate"><span class="pre">ZeroDivisionError</span></code> for a zero mean motion, which callers translate.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.tle_checksum">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">tle_checksum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#tle_checksum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.tle_checksum" title="Link to this definition"></a></dt>
+<dd><p>Modulo-10 checksum over a TLE line’s first 68 columns.</p>
+<p>Digits count as themselves and a minus sign counts as 1; everything else
+(letters, plus signs, decimal points, spaces) counts as zero.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.tle_epoch_jd">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">tle_epoch_jd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#tle_epoch_jd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.tle_epoch_jd" title="Link to this definition"></a></dt>
+<dd><p>UTC Julian Date of a TLE epoch (line 1 columns 19-32).</p>
+<p>The day-of-year bound depends on the decoded year. A flat <code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">367</span></code> test would
+let day 366 through for a non-leap year, where <code class="docutils literal notranslate"><span class="pre">timedelta</span></code> then rolls it
+silently into 1 January of the <em>following</em> year — a checksum-correct but
+impossible epoch, modelled a year late without any complaint.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.validate_elements">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">validate_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elements</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'orbital</span> <span class="pre">element</span> <span class="pre">set'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#validate_elements"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.validate_elements" title="Link to this definition"></a></dt>
+<dd><p>Check finiteness and physical range on a set of OMM-style elements.</p>
+<p>Shared by both record kinds. A TLE reaches it through
+<a class="reference internal" href="#satchecker_client.tle_parse.parse_tle_elements" title="satchecker_client.tle_parse.parse_tle_elements"><code class="xref py py-func docutils literal notranslate"><span class="pre">parse_tle_elements()</span></code></a> after the fields have been read out of the two
+lines; an OMM record reaches it with the provider’s own numbers. That
+matters more for OMM than for TLE: OMM has no modulo-10 checksum and no
+second copy of the satellite identifier to cross-check, so these bounds are
+the <em>only</em> thing standing between a corrupted element and a silently wrong
+trajectory. See <a class="reference internal" href="#module-satchecker_client.records" title="satchecker_client.records"><code class="xref py py-mod docutils literal notranslate"><span class="pre">satchecker_client.records</span></code></a> for what else is done to
+narrow that gap.</p>
+<p><em>context</em> names the kind in the error text, so the messages a TLE produces
+are unchanged from when these checks lived inline. Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.validate_tle_line">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">validate_tle_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#validate_tle_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.validate_tle_line" title="Link to this definition"></a></dt>
+<dd><p>Validate one TLE line’s marker, width and checksum; return it trimmed.</p>
+<p>The checksum is what makes single-character corruption detectable. Without
+it, a flipped digit inside a fixed-width numeric field parses cleanly, stays
+in range, and silently shifts the modelled trajectory — the failure mode that
+is hardest to notice downstream. Trailing whitespace and newlines are
+tolerated (files routinely carry them); leading layout is not, because every
+field is read by column.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.tle_parse.validate_tle_pair">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.tle_parse.</span></span><span class="sig-name descname"><span class="pre">validate_tle_pair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line2</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/satchecker_client/tle_parse.html#validate_tle_pair"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.tle_parse.validate_tle_pair" title="Link to this definition"></a></dt>
+<dd><p>Fully validate a TLE pair; return its decoded NORAD catalogue ID.</p>
+<p>Checks each line’s width and modulo-10 checksum, then runs the <em>same</em> parser
+downstream element extraction uses, so every consumed field (epoch,
+inclination, RAAN, eccentricity, argument of pericenter, mean anomaly, mean
+motion, BSTAR) must parse. Also decodes the satellite identifier embedded in
+both lines (Alpha-5 aware) and requires them to agree. Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>
+on any problem, which callers treat as “reject this record and try another
+source”.</p>
+</dd></dl>
+
+</section>
+<section id="module-satchecker_client.cache">
+<span id="cache"></span><h2>Cache<a class="headerlink" href="#module-satchecker_client.cache" title="Link to this heading"></a></h2>
+<p>Validated per-NORAD cache for immutable SatChecker orbit records.</p>
+<p>Each satellite has one small, atomically-written JSON file containing every
+validated record learned for it. A resolver can reuse one record for multiple
+nearby observation epochs by comparing its epoch with the configurable
+cache-reuse age. There are no catalogue buckets, snapshots, or settling states.</p>
+<p>A single satellite’s file may hold both record kinds at once, and around the
+2026-07-12 archive handover it usually will: the last TLEs SatChecker ever
+published for it, and the OMM element sets that follow. Which one a given
+observation gets is decided by epoch distance in the caller’s policy layer, not
+here.
+Everything below that has to be kind-aware is: what columns a record must have,
+what makes two records duplicates, and what “valid” means.</p>
+<dl class="py exception">
+<dt class="sig sig-object py" id="satchecker_client.cache.CacheValidationError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">CacheValidationError</span></span><a class="reference internal" href="_modules/satchecker_client/cache.html#CacheValidationError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.cache.CacheValidationError" title="Link to this definition"></a></dt>
+<dd><p>A per-satellite cache file is structurally or semantically invalid.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">DEDUPE_COLUMNS_BY_KIND</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'omm':</span> <span class="pre">('NORAD_CAT_ID',</span> <span class="pre">'EPOCH',</span> <span class="pre">'DATA_SOURCE'),</span> <span class="pre">'tle':</span> <span class="pre">('NORAD_CAT_ID',</span> <span class="pre">'TLE_LINE1',</span> <span class="pre">'TLE_LINE2',</span> <span class="pre">'DATA_SOURCE')}</span></span><a class="headerlink" href="#satchecker_client.cache.DEDUPE_COLUMNS_BY_KIND" title="Link to this definition"></a></dt>
+<dd><p>What makes two records for one satellite the same record. A TLE is identified
+by its lines, which encode the epoch; an OMM has no lines, so its epoch is the
+identifying field.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.cache.REQUIRED_COLUMNS">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">REQUIRED_COLUMNS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('NORAD_CAT_ID',</span> <span class="pre">'TLE_LINE1',</span> <span class="pre">'TLE_LINE2')</span></span><a class="headerlink" href="#satchecker_client.cache.REQUIRED_COLUMNS" title="Link to this definition"></a></dt>
+<dd><p>The TLE column set, under its historical name.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">REQUIRED_COLUMNS_BY_KIND</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'omm':</span> <span class="pre">('NORAD_CAT_ID',</span> <span class="pre">'EPOCH',</span> <span class="pre">'INCLINATION',</span> <span class="pre">'RA_OF_ASC_NODE',</span> <span class="pre">'ECCENTRICITY',</span> <span class="pre">'ARG_OF_PERICENTER',</span> <span class="pre">'MEAN_ANOMALY',</span> <span class="pre">'MEAN_MOTION',</span> <span class="pre">'BSTAR'),</span> <span class="pre">'tle':</span> <span class="pre">('NORAD_CAT_ID',</span> <span class="pre">'TLE_LINE1',</span> <span class="pre">'TLE_LINE2')}</span></span><a class="headerlink" href="#satchecker_client.cache.REQUIRED_COLUMNS_BY_KIND" title="Link to this definition"></a></dt>
+<dd><p>What a record of each kind must carry to be worth validating at all.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="satchecker_client.cache.SCHEMA_VERSION">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">SCHEMA_VERSION</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a class="headerlink" href="#satchecker_client.cache.SCHEMA_VERSION" title="Link to this definition"></a></dt>
+<dd><p>Bumped from 1 when records stopped being TLE-only. The bump costs nothing:
+<a class="reference internal" href="#satchecker_client.cache.TextOrbitCache.get" title="satchecker_client.cache.TextOrbitCache.get"><code class="xref py py-meth docutils literal notranslate"><span class="pre">TextOrbitCache.get()</span></code></a> already treats an unusable file as a warned cache
+miss, so v1 files self-evict and are re-fetched with a clear log line instead
+of needing a migration path.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="satchecker_client.cache.TextOrbitCache">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">TextOrbitCache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cache_dir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/satchecker_client/cache.html#TextOrbitCache"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.cache.TextOrbitCache" title="Link to this definition"></a></dt>
+<dd><p>Human-readable, per-NORAD JSON cache under one directory.</p>
+<p>One file per satellite, holding records of either kind. Around the archive
+handover a file will typically hold both: the satellite’s last TLEs and its
+first OMM element sets.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="satchecker_client.cache.TextOrbitCache.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">norad_id:</span> <span class="pre">int,</span> <span class="pre">log:</span> <span class="pre">~typing.Callable[[str],</span> <span class="pre">None]</span> <span class="pre">=</span> <span class="pre">&lt;built-in</span> <span class="pre">function</span> <span class="pre">print&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/satchecker_client/cache.html#TextOrbitCache.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.cache.TextOrbitCache.get" title="Link to this definition"></a></dt>
+<dd><p>Return all validated cached records for <em>norad_id</em>, or an empty frame.</p>
+<p>An absent file is an ordinary miss and says nothing. A file that exists
+but cannot be used is reported: silently treating it as a miss costs a
+network request on every run with nothing to indicate why, and a cache
+that never takes hold is otherwise invisible.</p>
+<p>This is also the whole migration path for the schema bump. A v1 file
+fails the version check, gets reported as unusable, and is overwritten by
+the next successful fetch — so nothing has to convert it.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="satchecker_client.cache.TextOrbitCache.store">
+<span class="sig-name descname"><span class="pre">store</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">norad_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">records</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/satchecker_client/cache.html#TextOrbitCache.store"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.cache.TextOrbitCache.store" title="Link to this definition"></a></dt>
+<dd><p>Merge newly fetched immutable records into one satellite’s cache.</p>
+<p>Concatenating kinds widens the frame — a TLE row gains null element
+columns and an OMM row gains null lines — which is why deduplication and
+validation are both per-row rather than per-column.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="satchecker_client.cache.read_legacy_tle_records">
+<span class="sig-prename descclassname"><span class="pre">satchecker_client.cache.</span></span><span class="sig-name descname"><span class="pre">read_legacy_tle_records</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="reference internal" href="_modules/satchecker_client/cache.html#read_legacy_tle_records"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#satchecker_client.cache.read_legacy_tle_records" title="Link to this definition"></a></dt>
+<dd><p>Read explicit user/replay <code class="docutils literal notranslate"><span class="pre">*.json</span></code> orbit tables from <em>directory</em>.</p>
+<p>A file qualifies if it exposes the required columns for <em>either</em> kind, so a
+Space-Track <code class="docutils literal notranslate"><span class="pre">gp</span></code> / <code class="docutils literal notranslate"><span class="pre">gp_history</span></code> export drops in unconverted whether it
+carries TLE lines, OMM element columns, or — as those exports usually do —
+both. No <code class="docutils literal notranslate"><span class="pre">RECORD_KIND</span></code> is needed: it is inferred, and a file carrying both
+resolves as a TLE, whose lines are the stronger thing to validate against.</p>
+<p><code class="docutils literal notranslate"><span class="pre">EPOCH</span></code> is kept for the OMM records that have no other epoch. It is still
+ignored for TLEs, which re-derive theirs from line 1.</p>
+<p>Managed <code class="docutils literal notranslate"><span class="pre">orbit-&lt;NORAD&gt;.json</span></code> envelopes are intentionally not interpreted as
+explicit input.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="readthedocs.html" class="btn btn-neutral float-right" title="Publishing the Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025-2026, Chris Finlay.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
