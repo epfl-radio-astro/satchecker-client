@@ -8,3 +8,4 @@ coverage.xml
 htmlcov/
 .pytest_cache/
 .venv/
+docs/_build/
