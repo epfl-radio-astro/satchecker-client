@@ -18,7 +18,7 @@ jobs:
       matrix:
         # The floor and ceiling of the supported range in pyproject.toml. The
         # suite is offline and pure Python, so the interior versions add little.
-        python-version: ['3.10', '3.13']
+        python-version: ['3.10', '3.14']
 
     steps:
       - uses: actions/checkout@v7
