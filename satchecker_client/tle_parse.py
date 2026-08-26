@@ -49,6 +49,20 @@ def decode_norad_id(field: str) -> int:
     raise ValueError(f"invalid satellite identifier field {field!r}")
 
 
+def _parse_eccentricity_field(field: str) -> float:
+    """Parse the eccentricity field (columns 27-33 of line 2, implied ``0.``).
+
+    Exactly seven ASCII digits, enforced rather than assumed: the implied
+    leading decimal point means a blank field would otherwise parse as
+    ``float("0.") == 0.0`` — a checksum-valid line with its eccentricity
+    *missing* silently becoming a circular orbit. (BSTAR is different: a blank
+    exponential field genuinely means zero and is accepted as such.)
+    """
+    if not (len(field) == 7 and field.isascii() and field.isdigit()):
+        raise ValueError(f"TLE eccentricity field must be 7 digits, got {field!r}")
+    return float("0." + field)
+
+
 def _parse_exp_field(field: str) -> float:
     """Parse a TLE exponential field (e.g. '-11606-4' -> -0.11606e-4)."""
     s = field.strip()
@@ -164,7 +178,7 @@ def parse_tle_elements(line1: str, line2: str) -> dict:
     elements = {
         "INCLINATION": float(line2[8:16]),
         "RA_OF_ASC_NODE": float(line2[17:25]),
-        "ECCENTRICITY": float("0." + line2[26:33].strip()),
+        "ECCENTRICITY": _parse_eccentricity_field(line2[26:33]),
         "ARG_OF_PERICENTER": float(line2[34:42]),
         "MEAN_ANOMALY": float(line2[43:51]),
         "MEAN_MOTION": float(line2[52:63]),  # rev/day

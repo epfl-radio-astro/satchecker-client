@@ -20,10 +20,17 @@ import json
 import math
 import os
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from glob import glob
 from pathlib import Path
 from typing import Callable
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
+    import msvcrt
 
 import pandas as pd
 
@@ -78,6 +85,8 @@ def _validated_ids(frame: pd.DataFrame, expected_norad_id: int) -> pd.Series:
     if any(not math.isfinite(float(value)) or float(value) != round(float(value)) for value in ids):
         raise CacheValidationError("NORAD_CAT_ID contains non-finite or non-integer values")
     ids = ids.astype(int)
+    if (ids <= 0).any():
+        raise CacheValidationError("NORAD_CAT_ID contains non-positive values")
     if set(ids) != {int(expected_norad_id)}:
         raise CacheValidationError(
             f"orbit cache for {expected_norad_id} contains records for another satellite"
@@ -155,6 +164,36 @@ def _kind_for_grouping(row) -> str:
         return _UNKNOWN_KIND
 
 
+@contextmanager
+def _exclusive_lock(path: Path):
+    """Hold an exclusive inter-process lock on *path*'s ``.lock`` sidecar.
+
+    Atomic replacement keeps a *reader* from ever seeing a partial file, but it
+    does nothing for two concurrent read/merge/write transactions: both read
+    the same old file and the last writer's replace discards the first's
+    records — a real loss when separate jobs share the default user cache. The
+    sidecar (never deleted; deleting a lock file is its own race) serialises
+    the whole transaction. ``flock`` locks the open file description, so this
+    also serialises threads within one process.
+    """
+    lock_path = path.with_name(path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a") as handle:
+        if fcntl is not None:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+        else:  # msvcrt: locks one byte; LK_LOCK retries ~10s then raises OSError
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+            else:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 def _atomic_write_json(path: Path, payload: dict) -> None:
     """Write *payload* atomically so a partial cache file is never observed."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -184,7 +223,8 @@ class TextOrbitCache:
     """
 
     def __init__(self, cache_dir):
-        self.cache_dir = Path(cache_dir)
+        # expanduser so "~/.cache/..." means what every caller writing it meant.
+        self.cache_dir = Path(cache_dir).expanduser()
 
     def path(self, norad_id: int) -> Path:
         return self.cache_dir / f"orbit-{int(norad_id)}.json"
@@ -239,20 +279,24 @@ class TextOrbitCache:
             incoming["FETCHED_AT"] = datetime.now(timezone.utc).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"
             )
-        existing = self.get(norad_id)
-        merged = (
-            pd.concat([existing, incoming], ignore_index=True)
-            if not existing.empty
-            else incoming
-        )
-        merged = _drop_duplicates_per_kind(merged)
-        merged = _validated_records(merged, norad_id)
-        envelope = {
-            "schema_version": SCHEMA_VERSION,
-            "norad_id": norad_id,
-            "records": merged.to_dict(orient="records"),
-        }
-        _atomic_write_json(self.path(norad_id), envelope)
+        # The read, merge and write are one transaction: without the lock, two
+        # concurrent stores both read the same old file and the later replace
+        # silently discards the earlier writer's records.
+        with _exclusive_lock(self.path(norad_id)):
+            existing = self.get(norad_id)
+            merged = (
+                pd.concat([existing, incoming], ignore_index=True)
+                if not existing.empty
+                else incoming
+            )
+            merged = _drop_duplicates_per_kind(merged)
+            merged = _validated_records(merged, norad_id)
+            envelope = {
+                "schema_version": SCHEMA_VERSION,
+                "norad_id": norad_id,
+                "records": merged.to_dict(orient="records"),
+            }
+            _atomic_write_json(self.path(norad_id), envelope)
 
 
 #: Columns worth carrying out of an explicit user/replay file. Everything a

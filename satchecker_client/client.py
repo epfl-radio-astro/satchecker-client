@@ -482,18 +482,43 @@ def _frame(rows: list[dict], endpoint: str, url: str) -> pd.DataFrame:
         ) from e
 
 
+def _requested_rows(
+    df: pd.DataFrame, norad_id: int, endpoint: str, url: str
+) -> pd.DataFrame:
+    """Only the rows belonging to the satellite that was asked for.
+
+    The batch layer re-checks this, but the fetch functions are public on their
+    own, and a misrouted response must not reach a direct caller labelled as the
+    satellite it requested. Stray extra rows are dropped; a response containing
+    *only* other satellites' records is an error rather than an empty frame —
+    an empty frame states the catalogue has no record, and this response states
+    no such thing.
+    """
+    matching = df[df["NORAD_CAT_ID"] == int(norad_id)].reset_index(drop=True)
+    if len(df) and not len(matching):
+        others = sorted(set(int(value) for value in df["NORAD_CAT_ID"]))
+        raise SatCheckerResponseError(
+            f"SatChecker {endpoint} returned records for satellite(s) {others}, "
+            f"not the requested {int(norad_id)} ({url})"
+        )
+    return matching
+
+
 def fetch_nearest_tle(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     """Fetch the single TLE nearest *epoch_jd* for one satellite.
 
     Returns an empty DataFrame if SatChecker has no record for the satellite.
     Note that the TLE archive is frozen at 2026-07-11, so for any observation
     after that this returns the last TLE ever published for the satellite,
-    however far from the requested epoch that is.
+    however far from the requested epoch that is. Rows for other satellites are
+    filtered out; a response carrying only those raises
+    :class:`SatCheckerResponseError`.
     """
     rows, url = _fetch_nearest_rows("get-nearest-tle", norad_id, epoch_jd)
     if rows is None:
         return pd.DataFrame()
-    return _normalise(_frame(rows, "get-nearest-tle", url))
+    frame = _normalise(_frame(rows, "get-nearest-tle", url))
+    return _requested_rows(frame, norad_id, "get-nearest-tle", url)
 
 
 def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
@@ -504,10 +529,13 @@ def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     earlier epoch is answered with its *earliest* record rather than with
     nothing — so a pre-handover caller gets a confident-looking element set that
     may be years off. Rejecting that is the caller's age ceiling, not this
-    function's — it reports what the service returned.
+    function's — it reports what the service returned. Rows for other satellites
+    are filtered out; a response carrying only those raises
+    :class:`SatCheckerResponseError`.
     """
     rows, url = _fetch_nearest_rows("get-nearest-omm", norad_id, epoch_jd)
     if rows is None:
         return pd.DataFrame()
     lifted = _lift_orbital_elements(rows, url)
-    return _normalise_omm(_frame(lifted, "get-nearest-omm", url))
+    frame = _normalise_omm(_frame(lifted, "get-nearest-omm", url))
+    return _requested_rows(frame, norad_id, "get-nearest-omm", url)

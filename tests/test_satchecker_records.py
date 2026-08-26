@@ -17,6 +17,7 @@ from satchecker_client.records import (
     KIND_OMM,
     KIND_TLE,
     RecordKindError,
+    norad_id_of,
     record_elements,
     record_epoch_jd,
     record_kind,
@@ -276,3 +277,26 @@ class TestValidateRecord:
     def test_a_datetime_epoch_object_is_accepted(self):
         record = make_omm(25544, _EPOCH, EPOCH=jd_to_datetime(_EPOCH))
         assert record_epoch_jd(record) == pytest.approx(_EPOCH, abs=1e-6)
+
+
+class TestNoradIdOf:
+    """IDs must convert exactly and be positive integers."""
+
+    def _record(self, value):
+        record = make_omm(25544, _EPOCH)
+        record["NORAD_CAT_ID"] = value
+        return record
+
+    @pytest.mark.parametrize("bad", [0, -1, "0", "-25544", 0.0, True, False])
+    def test_zero_negative_and_boolean_ids_are_rejected(self, bad):
+        with pytest.raises(ValueError):
+            norad_id_of(self._record(bad))
+
+    @pytest.mark.parametrize("huge", [2**53 + 1, str(2**53 + 1)])
+    def test_ids_above_float_precision_convert_exactly(self, huge):
+        # A float round-trip would round this to 2**53 — a different satellite.
+        assert norad_id_of(self._record(huge)) == 2**53 + 1
+
+    def test_plain_string_and_integral_float_forms_still_convert(self):
+        assert norad_id_of(self._record("25544")) == 25544
+        assert norad_id_of(self._record(25544.0)) == 25544

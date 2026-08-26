@@ -206,3 +206,36 @@ class TestSchemaVersionBump:
         cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
         assert json.loads(cache.path(25544).read_text())["schema_version"] == 2
         assert len(cache.get(25544)) == 1
+
+
+def test_concurrent_stores_do_not_lose_records(tmp_path):
+    """Read/merge/write transactions must serialise, not last-writer-wins."""
+    import threading
+
+    cache = TextOrbitCache(tmp_path)
+    epochs = [EPOCH - i for i in range(8)]
+    barrier = threading.Barrier(len(epochs))
+    failures = []
+
+    def store(epoch):
+        try:
+            barrier.wait()
+            cache.store(25544, make_catalogue_df([(25544, epoch)]))
+        except Exception as error:  # pragma: no cover — failure reporting only
+            failures.append(error)
+
+    threads = [threading.Thread(target=store, args=(epoch,)) for epoch in epochs]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not failures
+    assert len(cache.get(25544)) == len(epochs)
+
+
+def test_a_tilde_cache_path_is_expanded(tmp_path, monkeypatch):
+    """The README writes TextOrbitCache("~/...") and it must mean the home dir."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    cache = TextOrbitCache("~/orbits")
+    cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
+    assert (tmp_path / "orbits" / "orbit-25544.json").exists()

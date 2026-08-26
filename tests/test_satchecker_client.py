@@ -270,3 +270,30 @@ class TestFetchNearestOmm:
         frame = fetch_nearest_omm(25544, jd(2021, 11, 1))
         assert len(frame) == 1
         assert record_epoch_jd(frame.loc[0]) == pytest.approx(earliest, abs=1e-6)
+
+
+class TestRequestedSatelliteFiltering:
+    """A response must not be presented as a satellite it does not describe."""
+
+    def test_a_response_for_a_different_satellite_is_an_error(self, monkeypatch):
+        monkeypatch.setattr(
+            client, "_http_get", lambda *a, **k: make_nearest_json([(99999, EPOCH)])
+        )
+        with pytest.raises(SatCheckerResponseError, match="99999"):
+            fetch_nearest_tle(25544, EPOCH)
+
+    def test_the_omm_endpoint_gets_the_same_check(self, monkeypatch):
+        monkeypatch.setattr(
+            client, "_http_get", lambda *a, **k: make_nearest_omm_json([(99999, EPOCH)])
+        )
+        with pytest.raises(SatCheckerResponseError, match="99999"):
+            fetch_nearest_omm(25544, EPOCH)
+
+    def test_stray_rows_for_other_satellites_are_dropped(self, monkeypatch):
+        monkeypatch.setattr(
+            client,
+            "_http_get",
+            lambda *a, **k: make_nearest_json([(25544, EPOCH), (99999, EPOCH)]),
+        )
+        frame = fetch_nearest_tle(25544, EPOCH)
+        assert frame["NORAD_CAT_ID"].tolist() == [25544]
