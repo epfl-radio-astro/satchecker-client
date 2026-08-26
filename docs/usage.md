@@ -157,7 +157,11 @@ not of the handling.
 
 ```python
 cache = sc.TextOrbitCache("~/.cache/my-app/orbits")
-sc.store_or_warn(cache, norad_id, result.records)
+sc.store_or_warn(
+    lambda: cache.store(norad_id, result.records),
+    cache.path(norad_id),
+    "nearest records",
+)
 known = cache.get(norad_id)
 ```
 
