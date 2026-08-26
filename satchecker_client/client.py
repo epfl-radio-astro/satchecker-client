@@ -483,23 +483,30 @@ def _frame(rows: list[dict], endpoint: str, url: str) -> pd.DataFrame:
 
 
 def _requested_rows(
-    df: pd.DataFrame, norad_id: int, endpoint: str, url: str
-) -> pd.DataFrame:
-    """Only the rows belonging to the satellite that was asked for.
+    rows: list[dict], norad_id: int, endpoint: str, url: str
+) -> list[dict]:
+    """Only the raw rows belonging to the satellite that was asked for.
 
     The batch layer re-checks this, but the fetch functions are public on their
     own, and a misrouted response must not reach a direct caller labelled as the
     satellite it requested. Stray extra rows are dropped; a response containing
     *only* other satellites' records is an error rather than an empty frame —
     an empty frame states the catalogue has no record, and this response states
-    no such thing.
+    no such thing. Filtering happens before full per-kind normalisation so a
+    malformed stray row cannot invalidate a usable record for the requested
+    satellite.
     """
-    matching = df[df["NORAD_CAT_ID"] == int(norad_id)].reset_index(drop=True)
-    if len(df) and not len(matching):
-        others = sorted(set(int(value) for value in df["NORAD_CAT_ID"]))
+    id_frame = pd.DataFrame(
+        {"NORAD_CAT_ID": [row.get("satellite_id") for row in rows]}
+    )
+    ids = _checked_ids(id_frame)
+    requested = int(norad_id)
+    matching = [row for row, row_id in zip(rows, ids) if row_id == requested]
+    if rows and not matching:
+        others = sorted(set(int(value) for value in ids))
         raise SatCheckerResponseError(
             f"SatChecker {endpoint} returned records for satellite(s) {others}, "
-            f"not the requested {int(norad_id)} ({url})"
+            f"not the requested {requested} ({url})"
         )
     return matching
 
@@ -517,8 +524,8 @@ def fetch_nearest_tle(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     rows, url = _fetch_nearest_rows("get-nearest-tle", norad_id, epoch_jd)
     if rows is None:
         return pd.DataFrame()
-    frame = _normalise(_frame(rows, "get-nearest-tle", url))
-    return _requested_rows(frame, norad_id, "get-nearest-tle", url)
+    rows = _requested_rows(rows, norad_id, "get-nearest-tle", url)
+    return _normalise(_frame(rows, "get-nearest-tle", url))
 
 
 def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
@@ -536,6 +543,6 @@ def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     rows, url = _fetch_nearest_rows("get-nearest-omm", norad_id, epoch_jd)
     if rows is None:
         return pd.DataFrame()
+    rows = _requested_rows(rows, norad_id, "get-nearest-omm", url)
     lifted = _lift_orbital_elements(rows, url)
-    frame = _normalise_omm(_frame(lifted, "get-nearest-omm", url))
-    return _requested_rows(frame, norad_id, "get-nearest-omm", url)
+    return _normalise_omm(_frame(lifted, "get-nearest-omm", url))

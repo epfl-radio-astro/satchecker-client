@@ -297,3 +297,23 @@ class TestRequestedSatelliteFiltering:
         )
         frame = fetch_nearest_tle(25544, EPOCH)
         assert frame["NORAD_CAT_ID"].tolist() == [25544]
+
+    def test_a_malformed_stray_tle_row_is_dropped_before_validation(self, monkeypatch):
+        payload = json.loads(make_nearest_json([(25544, EPOCH), (99999, EPOCH)]))
+        payload["orbital_data"][1]["tle_line2"] = None
+        monkeypatch.setattr(
+            client, "_http_get", lambda *a, **k: json.dumps(payload).encode()
+        )
+        frame = fetch_nearest_tle(25544, EPOCH)
+        assert frame["NORAD_CAT_ID"].tolist() == [25544]
+
+    def test_a_malformed_stray_omm_row_is_dropped_before_validation(self, monkeypatch):
+        payload = json.loads(
+            make_nearest_omm_json([(25544, EPOCH), (99999, EPOCH)])
+        )
+        payload[0]["orbital_data"][1]["orbital_elements"] = None
+        monkeypatch.setattr(
+            client, "_http_get", lambda *a, **k: json.dumps(payload).encode()
+        )
+        frame = fetch_nearest_omm(25544, EPOCH)
+        assert frame["NORAD_CAT_ID"].tolist() == [25544]

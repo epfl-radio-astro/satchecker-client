@@ -10,6 +10,7 @@ asserted directly rather than inferred from higher-level behaviour.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 import pytest
 
@@ -292,7 +293,9 @@ class TestNoradIdOf:
         with pytest.raises(ValueError):
             norad_id_of(self._record(bad))
 
-    @pytest.mark.parametrize("huge", [2**53 + 1, str(2**53 + 1)])
+    @pytest.mark.parametrize(
+        "huge", [2**53 + 1, str(2**53 + 1), Decimal(2**53 + 1)]
+    )
     def test_ids_above_float_precision_convert_exactly(self, huge):
         # A float round-trip would round this to 2**53 — a different satellite.
         assert norad_id_of(self._record(huge)) == 2**53 + 1

@@ -43,8 +43,8 @@ from __future__ import annotations
 
 import math
 import numbers
-import re
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from ._time import datetime_to_jd
 from .tle_parse import (
@@ -231,10 +231,6 @@ def record_elements(record) -> dict:
 # Validation
 # ---------------------------------------------------------------------------
 
-#: A NORAD ID as a plain decimal string, as JSON and CSV round-trips write it.
-_INTEGER_STRING = re.compile(r"\s*\+?\d+\s*\Z")
-
-
 def norad_id_of(record, context: str = "record") -> int:
     """The record's own ``NORAD_CAT_ID``, as a positive finite integer.
 
@@ -249,18 +245,36 @@ def norad_id_of(record, context: str = "record") -> int:
         raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}")
     if isinstance(raw, numbers.Integral):
         value = int(raw)
-    elif isinstance(raw, str) and _INTEGER_STRING.match(raw):
-        value = int(raw)
-    else:
+    elif isinstance(raw, str):
+        # Decimal preserves every digit in numeric strings, including exponent
+        # and integral decimal forms accepted by the former float conversion.
         try:
-            as_float = float(raw)
-        except (TypeError, ValueError) as e:
-            raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}") from e
-        if not math.isfinite(as_float):
+            exact = Decimal(raw.strip())
+        except InvalidOperation as e:
+            raise ValueError(
+                f"{context} has a non-numeric NORAD_CAT_ID {raw!r}"
+            ) from e
+        if not exact.is_finite():
             raise ValueError(f"{context} has a non-finite NORAD_CAT_ID {raw!r}")
-        if as_float != round(as_float):
+        if exact != exact.to_integral_value():
             raise ValueError(f"{context} has a non-integer NORAD_CAT_ID {raw!r}")
-        value = int(round(as_float))
+        value = int(exact)
+    else:
+        # Convert to int and compare against the original value. Unlike a float
+        # round-trip, this remains exact for Decimal, Fraction and other numeric
+        # scalar types; a type that cannot prove equality is rejected.
+        try:
+            finite = math.isfinite(raw)
+        except (TypeError, ValueError, OverflowError) as e:
+            raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}") from e
+        if not finite:
+            raise ValueError(f"{context} has a non-finite NORAD_CAT_ID {raw!r}")
+        try:
+            value = int(raw)
+        except (TypeError, ValueError, OverflowError) as e:
+            raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}") from e
+        if raw != value:
+            raise ValueError(f"{context} has a non-integer NORAD_CAT_ID {raw!r}")
     if value <= 0:
         raise ValueError(f"{context} has a non-positive NORAD_CAT_ID {raw!r}")
     return value
