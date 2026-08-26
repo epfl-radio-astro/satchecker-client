@@ -42,7 +42,9 @@ has none, so a wrong epoch is exactly the failure this format is prone to.
 from __future__ import annotations
 
 import math
+import numbers
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 from ._time import datetime_to_jd
 from .tle_parse import (
@@ -233,18 +235,49 @@ def norad_id_of(record, context: str = "record") -> int:
     """The record's own ``NORAD_CAT_ID``, as a positive finite integer.
 
     A fractional ID would truncate to a *different* satellite and an infinity
-    raises inside the numeric casts downstream, so both are rejected here.
+    raises inside the numeric casts downstream, so both are rejected here, as is
+    zero or a negative — no catalogue entry has ever had one. Integers and plain
+    digit strings convert directly rather than through ``float``, which would
+    silently round an ID above 2**53 into a different satellite's.
     """
     raw = _get(record, "NORAD_CAT_ID", context)
-    try:
-        value = float(raw)
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}") from e
-    if not math.isfinite(value):
-        raise ValueError(f"{context} has a non-finite NORAD_CAT_ID {raw!r}")
-    if value != round(value):
-        raise ValueError(f"{context} has a non-integer NORAD_CAT_ID {raw!r}")
-    return int(round(value))
+    if isinstance(raw, bool):  # bool is Integral; True must not become ID 1
+        raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}")
+    if isinstance(raw, numbers.Integral):
+        value = int(raw)
+    elif isinstance(raw, str):
+        # Decimal preserves every digit in numeric strings, including exponent
+        # and integral decimal forms accepted by the former float conversion.
+        try:
+            exact = Decimal(raw.strip())
+        except InvalidOperation as e:
+            raise ValueError(
+                f"{context} has a non-numeric NORAD_CAT_ID {raw!r}"
+            ) from e
+        if not exact.is_finite():
+            raise ValueError(f"{context} has a non-finite NORAD_CAT_ID {raw!r}")
+        if exact != exact.to_integral_value():
+            raise ValueError(f"{context} has a non-integer NORAD_CAT_ID {raw!r}")
+        value = int(exact)
+    else:
+        # Convert to int and compare against the original value. Unlike a float
+        # round-trip, this remains exact for Decimal, Fraction and other numeric
+        # scalar types; a type that cannot prove equality is rejected.
+        try:
+            finite = math.isfinite(raw)
+        except (TypeError, ValueError, OverflowError) as e:
+            raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}") from e
+        if not finite:
+            raise ValueError(f"{context} has a non-finite NORAD_CAT_ID {raw!r}")
+        try:
+            value = int(raw)
+        except (TypeError, ValueError, OverflowError) as e:
+            raise ValueError(f"{context} has a non-numeric NORAD_CAT_ID {raw!r}") from e
+        if raw != value:
+            raise ValueError(f"{context} has a non-integer NORAD_CAT_ID {raw!r}")
+    if value <= 0:
+        raise ValueError(f"{context} has a non-positive NORAD_CAT_ID {raw!r}")
+    return value
 
 
 def validate_record(record) -> int:

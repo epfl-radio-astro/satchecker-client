@@ -254,3 +254,27 @@ class TestValidateElements:
         l1, l2 = make_tle(25544, _EPOCH)
         parsed = parse_tle_elements(l1, l2)
         assert semimajor_axis_km(parsed["MEAN_MOTION"]) == parsed["SEMIMAJOR_AXIS"]
+
+
+class TestEccentricityField:
+    """The implied decimal point means a blank field would read as ``0.0``."""
+
+    def _with_field(self, field):
+        l1, l2 = make_tle(25544, _EPOCH)
+        return l1, with_checksum(l2[:26] + field + l2[33:68])
+
+    def test_a_blank_field_is_rejected_not_read_as_a_circular_orbit(self):
+        l1, l2 = self._with_field(" " * 7)
+        with pytest.raises(ValueError, match="eccentricity"):
+            parse_tle_elements(l1, l2)
+        with pytest.raises(ValueError, match="eccentricity"):
+            validate_tle_pair(l1, l2)
+
+    def test_internal_spaces_are_rejected(self):
+        l1, l2 = self._with_field("12 4567")
+        with pytest.raises(ValueError, match="eccentricity"):
+            parse_tle_elements(l1, l2)
+
+    def test_a_fully_digit_field_still_parses(self):
+        l1, l2 = self._with_field("0006703")
+        assert parse_tle_elements(l1, l2)["ECCENTRICITY"] == pytest.approx(0.0006703)

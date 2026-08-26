@@ -5,4 +5,4 @@ User-Agent from it without importing the package ``__init__``, which imports
 ``client`` in turn.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
