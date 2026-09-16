@@ -1,4 +1,4 @@
-"""Validated per-NORAD cache for immutable SatChecker orbit records.
+"""Validated cache for SatChecker orbit records and catalogue searches.
 
 Each satellite has one small, atomically-written JSON file containing every
 validated record learned for it. A resolver can reuse one record for multiple
@@ -12,19 +12,29 @@ observation gets is decided by epoch distance in the caller's policy layer, not
 here.
 Everything below that has to be kind-aware is: what columns a record must have,
 what makes two records duplicates, and what "valid" means.
+
+Catalogue searches live in the same directory, one ``search-<key>.json`` file per
+query, beside the ``orbit-<NORAD>.json`` files. They differ from orbit records in
+the one way that matters for reuse: a record never changes once published, but a
+search result does, as satellites launch, decay dates are added and alias rows
+appear. So a search file holds one complete result and the time it was fetched,
+and is replaced rather than merged; whether a result is still fresh enough is
+the caller's decision.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
 import tempfile
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from glob import glob
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 try:
     import fcntl
@@ -34,6 +44,8 @@ except ImportError:  # Windows
 
 import pandas as pd
 
+from ._time import is_iso_date
+from .client import BASE_URL, SEARCH_COLUMNS
 from .tle_parse import MISSING_CHECKSUM, tle_line_defects, validate_tle_line
 from .records import (
     KIND_FIELD,
@@ -50,6 +62,30 @@ from .records import (
 #: miss, so v1 files self-evict and are re-fetched with a clear log line instead
 #: of needing a migration path.
 SCHEMA_VERSION = 2
+
+#: Version of the ``search-<key>.json`` envelope, independent of
+#: :data:`SCHEMA_VERSION`: the two file kinds change for different reasons.
+SEARCH_SCHEMA_VERSION = 1
+
+#: The endpoint a search file caches; part of its key and checked on read.
+_SEARCH_ENDPOINT = "search-satellites"
+
+_FETCHED_AT_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+@dataclass(frozen=True)
+class SearchSnapshot:
+    """A cached catalogue search: the query, its complete result, and when it ran.
+
+    ``found`` is what :func:`~satchecker_client.client.search_satellites`
+    returned for ``name``, with :data:`~satchecker_client.client.SEARCH_COLUMNS`;
+    an empty frame is a cached search that matched nothing, not a miss.
+    ``fetched_at`` is a timezone-aware UTC datetime.
+    """
+
+    name: str
+    found: pd.DataFrame
+    fetched_at: datetime
 
 #: What a record of each kind must carry to be worth validating at all.
 REQUIRED_COLUMNS_BY_KIND = {
@@ -128,6 +164,144 @@ def _validated_records(records, expected_norad_id: int) -> pd.DataFrame:
                 f"record belongs to satellite {embedded_id}, not {expected_norad_id}"
             )
     return frame.reset_index(drop=True)
+
+
+def _checked_search_name(name) -> str:
+    """The same rule :func:`~satchecker_client.client.search_satellites` applies."""
+    if not isinstance(name, str):
+        raise TypeError(f"name must be a string, not {type(name).__name__}")
+    if not name.strip():
+        raise ValueError("name must not be empty")
+    return name
+
+
+def _search_key(name: str) -> str:
+    """Digest of everything that decides a search's result: service, endpoint, name."""
+    material = json.dumps(
+        {"base_url": BASE_URL, "endpoint": _SEARCH_ENDPOINT, "name": name},
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
+def _validated_search_frame(found) -> pd.DataFrame:
+    """A search result checked the way the client checks a reply, as a clean frame.
+
+    Raises :class:`CacheValidationError`. The rules are the ones
+    :func:`~satchecker_client.client.search_satellites` applies to the service's
+    reply: integer IDs, a name on every row, and dates that are ``YYYY-MM-DD``
+    or null — exactly, since callers compare them as strings.
+    """
+    frame = pd.DataFrame(found) if not isinstance(found, pd.DataFrame) else found
+    if frame.empty:
+        missing = [column for column in SEARCH_COLUMNS if column not in frame.columns]
+        if len(frame.columns) and missing:
+            raise CacheValidationError(f"search result is missing columns {missing}")
+        return pd.DataFrame(columns=SEARCH_COLUMNS)
+    missing = [column for column in SEARCH_COLUMNS if column not in frame.columns]
+    if missing:
+        raise CacheValidationError(f"search result is missing columns {missing}")
+    frame = frame[SEARCH_COLUMNS].reset_index(drop=True).copy()
+
+    ids = frame["NORAD_CAT_ID"]
+    if ids.isnull().any():
+        raise CacheValidationError("search result has null values in NORAD_CAT_ID")
+    try:
+        numeric = pd.to_numeric(ids)
+    except (TypeError, ValueError) as error:
+        raise CacheValidationError(f"search result NORAD_CAT_ID is not numeric: {error}") from error
+    if any(
+        isinstance(value, bool)
+        or not math.isfinite(float(value))
+        or float(value) != round(float(value))
+        or float(value) <= 0
+        for value in numeric
+    ):
+        raise CacheValidationError(
+            "search result NORAD_CAT_ID contains non-positive, non-finite or "
+            "non-integer values"
+        )
+    frame["NORAD_CAT_ID"] = numeric.astype(int)
+
+    for column in SEARCH_COLUMNS[1:]:
+        for value in frame[column]:
+            if pd.isna(value):
+                if column == "OBJECT_NAME":
+                    raise CacheValidationError("search result has a row with no OBJECT_NAME")
+                continue
+            if not isinstance(value, str):
+                raise CacheValidationError(
+                    f"search result {column} holds a non-string value {value!r}"
+                )
+            if column in ("LAUNCH_DATE", "DECAY_DATE") and not is_iso_date(value):
+                raise CacheValidationError(
+                    f"search result {column} is not a YYYY-MM-DD date: {value!r}"
+                )
+    return frame
+
+
+def _search_records_for_json(frame: pd.DataFrame) -> list[dict]:
+    """Rows as plain JSON values: native ints, and null — never NaN — for missing."""
+    return [
+        {
+            column: (
+                int(row[column])
+                if column == "NORAD_CAT_ID"
+                else (None if pd.isna(row[column]) else row[column])
+            )
+            for column in SEARCH_COLUMNS
+        }
+        for _, row in frame.iterrows()
+    ]
+
+
+def _snapshot_from_envelope(envelope, name: str) -> SearchSnapshot:
+    """Check a search file's envelope against the search asked for; build the snapshot."""
+    if not isinstance(envelope, dict):
+        raise CacheValidationError("search cache envelope is not an object")
+    if envelope.get("schema_version") != SEARCH_SCHEMA_VERSION:
+        raise CacheValidationError(
+            f"unsupported schema_version {envelope.get('schema_version')!r} "
+            f"(this satchecker_client writes {SEARCH_SCHEMA_VERSION})"
+        )
+    if envelope.get("endpoint") != _SEARCH_ENDPOINT:
+        raise CacheValidationError(
+            f"search cache file is for endpoint {envelope.get('endpoint')!r}"
+        )
+    if envelope.get("base_url") != BASE_URL:
+        raise CacheValidationError(
+            f"search cache file is for service {envelope.get('base_url')!r}, "
+            f"not {BASE_URL!r}"
+        )
+    if envelope.get("name") != name:
+        raise CacheValidationError(
+            f"search cache file is for {envelope.get('name')!r}, not {name!r}"
+        )
+    try:
+        fetched_at = datetime.strptime(envelope.get("fetched_at"), _FETCHED_AT_FORMAT)
+    except (TypeError, ValueError) as error:
+        raise CacheValidationError(
+            f"search cache fetched_at is unreadable: {envelope.get('fetched_at')!r}"
+        ) from error
+    records = envelope.get("records")
+    if not isinstance(records, list) or not all(isinstance(row, dict) for row in records):
+        raise CacheValidationError("search cache records are not a list of objects")
+    count = envelope.get("count")
+    if isinstance(count, bool) or not isinstance(count, int) or count != len(records):
+        raise CacheValidationError(
+            f"search cache count {count!r} does not match its {len(records)} records"
+        )
+    if any(set(row) != set(SEARCH_COLUMNS) for row in records):
+        raise CacheValidationError("search cache records do not carry the search columns")
+    frame = (
+        _validated_search_frame(pd.DataFrame(records, columns=SEARCH_COLUMNS))
+        if records
+        else pd.DataFrame(columns=SEARCH_COLUMNS)
+    )
+    return SearchSnapshot(
+        name=name, found=frame, fetched_at=fetched_at.replace(tzinfo=timezone.utc)
+    )
 
 
 def _cacheable(records: pd.DataFrame, norad_id: int) -> pd.DataFrame:
@@ -351,6 +525,79 @@ class TextOrbitCache:
                 "records": merged.to_dict(orient="records"),
             }
             _atomic_write_json(self.path(norad_id), envelope)
+
+    def search_path(self, name: str) -> Path:
+        """Where the cached result of searching for *name* lives.
+
+        Keyed by the name exactly as sent, since the service matches it
+        case-sensitively and reads ``%`` and ``_`` as wildcards: ``NAVSTAR`` and
+        ``navstar`` are different searches with different results. The key is a
+        digest because a name can hold characters a filename cannot.
+        """
+        return self.cache_dir / f"search-{_search_key(_checked_search_name(name))}.json"
+
+    def get_search(
+        self, name: str, log: Callable[[str], None] = print
+    ) -> Optional[SearchSnapshot]:
+        """Return the cached search for *name*, or ``None`` on a miss.
+
+        Follows :meth:`get`: an absent file is an ordinary miss and says nothing,
+        and a file that exists but cannot be used is reported and treated as a
+        miss. A cached search that matched nothing is not a miss — it comes back
+        as a :class:`SearchSnapshot` with an empty ``found``.
+
+        Nothing here judges age. A search result goes stale as the catalogue
+        changes, in both directions: an old result can lack a decay date added
+        since, keeping a satellite that should now be ruled out, and it can lack
+        a satellite added to the catalogue or given a matching alias since.
+        ``fetched_at`` is there for the caller's policy.
+        """
+        name = _checked_search_name(name)
+        path = self.search_path(name)
+        if not path.exists():
+            return None
+        try:
+            with open(path) as handle:
+                envelope = json.load(handle)
+            return _snapshot_from_envelope(envelope, name)
+        except (OSError, ValueError, TypeError) as error:
+            log(
+                f"  warning: cached search file {path} is unusable ({error}); "
+                "treating it as a cache miss"
+            )
+            return None
+
+    def store_search(
+        self, name: str, found: pd.DataFrame, fetched_at: Optional[datetime] = None
+    ) -> None:
+        """Replace the cached result of searching for *name* with *found*.
+
+        *found* is a :func:`~satchecker_client.client.search_satellites` result,
+        empty or not; *fetched_at* defaults to now, and a naive datetime is taken
+        as UTC. Unlike :meth:`store`, this replaces rather than merges: a search
+        result is a snapshot of a catalogue that changes, so rows from an older
+        search are not evidence about a newer one. An invalid *found* raises
+        :class:`CacheValidationError` and leaves any existing file untouched.
+        """
+        name = _checked_search_name(name)
+        frame = _validated_search_frame(found)
+        if fetched_at is None:
+            fetched_at = datetime.now(timezone.utc)
+        elif fetched_at.tzinfo is None:
+            fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+        records = _search_records_for_json(frame)
+        envelope = {
+            "schema_version": SEARCH_SCHEMA_VERSION,
+            "endpoint": _SEARCH_ENDPOINT,
+            "base_url": BASE_URL,
+            "name": name,
+            "fetched_at": fetched_at.astimezone(timezone.utc).strftime(_FETCHED_AT_FORMAT),
+            "count": len(records),
+            "records": records,
+        }
+        path = self.search_path(name)
+        with _exclusive_lock(path):
+            _atomic_write_json(path, envelope)
 
 
 #: Columns worth carrying out of an explicit user/replay file. Everything a

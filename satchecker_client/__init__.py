@@ -41,6 +41,7 @@ from .client import (
 from .catalogue import CANDIDATE_COLUMNS, in_orbit_candidates
 from .cache import (
     CacheValidationError,
+    SearchSnapshot,
     TextOrbitCache,
     read_legacy_tle_records,
 )
@@ -82,6 +83,7 @@ __all__ = [
     "CANDIDATE_COLUMNS",
     "in_orbit_candidates",
     "CacheValidationError",
+    "SearchSnapshot",
     "TextOrbitCache",
     "read_legacy_tle_records",
     "KIND_OMM",

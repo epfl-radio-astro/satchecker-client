@@ -27,7 +27,8 @@ needed.
 - **Kind dispatch** — one place that knows how TLE and OMM records differ, so
   callers spanning the archive handover do not thread a format flag through
   their own code.
-- **Caching** — a validated, atomically-written per-NORAD JSON store.
+- **Caching** — a validated, atomically-written per-NORAD JSON store, which also
+  keeps catalogue search results so name-selected runs can work offline.
 - **Batching** — bounded-concurrency fetches that stop on the first sign the
   service itself is the problem rather than working through the rest of a list.
 

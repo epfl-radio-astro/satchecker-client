@@ -292,6 +292,55 @@ for callers migrating from files they already have. Floats in those files read
 back as the exact doubles that were written; its reference entry notes the two
 cases where pandas still differs.
 
+### Search results
+
+The same cache keeps catalogue searches, one `search-<key>.json` file per query
+in the same directory as the orbit files, so a name-selected run can resolve its
+satellites without the network once both are cached:
+
+```python
+from datetime import datetime, timedelta, timezone
+
+name = "NAVSTAR"
+snapshot = cache.get_search(name)
+too_old = snapshot is None or datetime.now(timezone.utc) - snapshot.fetched_at > timedelta(days=7)
+if too_old:
+    try:
+        found = sc.search_satellites(name)
+        sc.store_or_warn(
+            lambda: cache.store_search(name, found), cache.search_path(name), "search result"
+        )
+    except sc.SatCheckerTransportError:
+        if snapshot is None:
+            raise
+        found = snapshot.found  # offline: fall back to the older result, and say so
+else:
+    found = snapshot.found
+```
+
+What makes this different from the orbit records shapes how the files behave:
+
+- **The key is the name exactly as sent.** The service matches case-sensitively
+  and reads `%` and `_` as wildcards, so `NAVSTAR` and `navstar` are cached
+  separately, as they are searched separately.
+- **A file holds one complete result, replaced on every store.** Orbit records
+  never change once published, so they merge; a search result is a snapshot of
+  a catalogue that does change, and rows from an older search say nothing about
+  a newer one.
+- **A search that matched nothing is cached**, as an empty `found`, and is not
+  a miss.
+- **Nothing judges age.** {meth}`~satchecker_client.cache.TextOrbitCache.get_search`
+  returns `fetched_at` and leaves the decision to you. Staleness errs both ways:
+  an old result can lack a decay date added since, keeping a satellite that
+  should now be excluded, and it can lack a satellite added to the catalogue, or
+  given a matching alias, since it was fetched. For a run you need to reproduce
+  exactly, keep the NORAD IDs it actually used rather than relying on a cached
+  search.
+
+Search files use their own schema version and are only ever opened by name, so
+versions of this package that predate them, reading the same directory, never
+see them.
+
 ## What stays with the caller
 
 This package takes no view on *which* record an application should use. Source

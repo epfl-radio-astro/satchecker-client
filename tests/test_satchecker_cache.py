@@ -5,12 +5,16 @@ import json
 import pandas as pd
 import pytest
 
+from datetime import datetime, timedelta, timezone
+
 from satchecker_client.cache import (
     CacheValidationError,
     SCHEMA_VERSION,
+    SearchSnapshot,
     TextOrbitCache,
     read_legacy_tle_records,
 )
+from satchecker_client.client import SEARCH_COLUMNS
 from satchecker_client.records import record_epoch_jd
 from satchecker_client.tle_parse import tle_checksum
 
@@ -386,4 +390,205 @@ def test_invalid_records_still_raise_cache_validation_error(tmp_path, build, nor
     with pytest.raises(CacheValidationError):
         cache.store(norad_id, build())
     assert not cache.path(norad_id).exists()
+
+
+# ---------------------------------------------------------------------------
+# Catalogue searches, cached beside the orbit files
+# ---------------------------------------------------------------------------
+
+def _search_frame(*rows):
+    """A search_satellites result; rows are (id, name, launch, decay) plus nulls."""
+    return pd.DataFrame(
+        [
+            {
+                "NORAD_CAT_ID": norad_id,
+                "OBJECT_NAME": name,
+                "OBJECT_ID": "2025-119D" if name.startswith("STARLINK-11691") else None,
+                "OBJECT_TYPE": None,
+                "RCS_SIZE": None,
+                "LAUNCH_DATE": launch,
+                "DECAY_DATE": decay,
+            }
+            for norad_id, name, launch, decay in rows
+        ],
+        columns=SEARCH_COLUMNS,
+    )
+
+
+FETCHED = datetime(2026, 9, 16, 12, 30, 5, tzinfo=timezone.utc)
+
+STARLINK = _search_frame(
+    (64236, "STARLINK-11691", "2025-06-03", None),
+    (64236, "STARLINK-11691 [DTC]", None, None),  # alias row, fewer fields
+    (47406, "STARLINK-2133", None, "2026-01-30"),  # decayed, still in the result
+)
+
+
+class TestSearchCache:
+    def test_a_search_round_trips_whole_with_its_fetch_time(self, tmp_path):
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+
+        snapshot = cache.get_search("STARLINK")
+
+        assert isinstance(snapshot, SearchSnapshot)
+        assert snapshot.name == "STARLINK"
+        assert snapshot.fetched_at == FETCHED
+        found = snapshot.found
+        assert list(found.columns) == SEARCH_COLUMNS
+        assert found["NORAD_CAT_ID"].tolist() == [64236, 64236, 47406]
+        assert found["NORAD_CAT_ID"].dtype.kind == "i"
+        assert found["OBJECT_NAME"].tolist() == [
+            "STARLINK-11691", "STARLINK-11691 [DTC]", "STARLINK-2133",
+        ]
+        assert found.loc[0, "LAUNCH_DATE"] == "2025-06-03"
+        assert pd.isna(found.loc[1, "LAUNCH_DATE"])
+        assert found.loc[2, "DECAY_DATE"] == "2026-01-30"
+
+    def test_a_search_that_matched_nothing_is_cached_not_a_miss(self, tmp_path):
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("ZZZNOSUCHSAT", pd.DataFrame(columns=SEARCH_COLUMNS), fetched_at=FETCHED)
+        snapshot = cache.get_search("ZZZNOSUCHSAT")
+        assert snapshot is not None
+        assert snapshot.found.empty
+        assert list(snapshot.found.columns) == SEARCH_COLUMNS
+
+    def test_an_absent_search_is_a_silent_miss(self, tmp_path):
+        messages = []
+        assert TextOrbitCache(tmp_path).get_search("NAVSTAR", log=messages.append) is None
+        assert messages == []
+
+    @pytest.mark.parametrize("other", ["navstar", "NAVSTAR ", " NAVSTAR", "NAVSTA_"])
+    def test_the_query_as_sent_is_the_key(self, tmp_path, other):
+        # Case, whitespace and wildcards all change what the service returns.
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("NAVSTAR", STARLINK, fetched_at=FETCHED)
+        assert cache.search_path(other) != cache.search_path("NAVSTAR")
+        assert cache.get_search(other) is None
+
+    def test_a_new_search_replaces_the_old_one(self, tmp_path):
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+        later = FETCHED + timedelta(days=3)
+        cache.store_search("STARLINK", STARLINK.iloc[[2]], fetched_at=later)
+
+        snapshot = cache.get_search("STARLINK")
+        assert snapshot.found["NORAD_CAT_ID"].tolist() == [47406]
+        assert snapshot.fetched_at == later
+
+    def test_search_files_sit_beside_the_orbit_files_without_disturbing_them(self, tmp_path):
+        cache = TextOrbitCache(tmp_path)
+        cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
+        orbit_before = cache.path(25544).read_bytes()
+
+        cache.store_search("ISS", _search_frame((25544, "ISS (ZARYA)", "1998-11-20", None)))
+
+        assert cache.search_path("ISS").parent == cache.path(25544).parent == tmp_path
+        assert cache.search_path("ISS").name.startswith("search-")
+        assert cache.path(25544).read_bytes() == orbit_before
+        assert len(cache.get(25544)) == 1
+        # A directory scan for replay files skips both kinds of cache file.
+        assert read_legacy_tle_records(tmp_path).empty
+
+    def test_missing_values_are_written_as_null_not_nan(self, tmp_path):
+        # pandas 3 reads a missing string back as NaN, and json.dump writes NaN as
+        # a bare token no strict JSON reader accepts. Put one in explicitly, so
+        # this holds under pandas 2 as well.
+        found = STARLINK.astype({"LAUNCH_DATE": object})
+        found.loc[1, "LAUNCH_DATE"] = float("nan")
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", found, fetched_at=FETCHED)
+        text = cache.search_path("STARLINK").read_text()
+        assert "NaN" not in text
+        envelope = json.loads(text)
+        assert envelope["records"][1]["LAUNCH_DATE"] is None
+        assert envelope["count"] == 3
+
+    def test_a_naive_fetched_at_is_taken_as_utc(self, tmp_path):
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED.replace(tzinfo=None))
+        assert cache.get_search("STARLINK").fetched_at == FETCHED
+
+    @pytest.mark.parametrize(
+        "corrupt, reason",
+        [
+            (lambda path, env: path.write_text("{not json"), "invalid JSON"),
+            (lambda path, env: _rewrite(path, env, schema_version=99), "schema_version"),
+            (lambda path, env: _rewrite(path, env, endpoint="get-nearest-tle"), "endpoint"),
+            (lambda path, env: _rewrite(path, env, base_url="https://example.org/tools"), "service"),
+            (lambda path, env: _rewrite(path, env, name="NAVSTAR"), "is for 'NAVSTAR'"),
+            (lambda path, env: _rewrite(path, env, fetched_at="yesterday"), "fetched_at"),
+            (lambda path, env: _rewrite(path, env, count=2), "count"),
+            (lambda path, env: _rewrite_row(path, env, 0, LAUNCH_DATE="2025-6-03"), "YYYY-MM-DD"),
+            (lambda path, env: _rewrite_row(path, env, 0, NORAD_CAT_ID=64236.5), "non-integer"),
+            (lambda path, env: _rewrite_row(path, env, 0, OBJECT_NAME=None), "no OBJECT_NAME"),
+            (lambda path, env: _drop_key(path, env, 0, "RCS_SIZE"), "search columns"),
+            (lambda path, env: path.write_text(json.dumps([env])), "not an object"),
+            (lambda path, env: _rewrite(path, env, records={"0": env["records"][0]}), "not a list"),
+        ],
+    )
+    def test_an_unusable_search_file_is_reported_and_treated_as_a_miss(
+        self, tmp_path, corrupt, reason
+    ):
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+        path = cache.search_path("STARLINK")
+        corrupt(path, json.loads(path.read_text()))
+
+        messages = []
+        assert cache.get_search("STARLINK", log=messages.append) is None
+        assert len(messages) == 1
+        assert "unusable" in messages[0]
+        if reason != "invalid JSON":
+            assert reason in messages[0]
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            STARLINK.drop(columns=["DECAY_DATE"]),
+            STARLINK.assign(LAUNCH_DATE="2025/06/03"),
+            STARLINK.assign(OBJECT_NAME=None),
+            STARLINK.assign(NORAD_CAT_ID=0),
+            STARLINK.assign(NORAD_CAT_ID=None),
+            STARLINK.assign(NORAD_CAT_ID="sixty-four"),
+            STARLINK.assign(OBJECT_TYPE=5),
+            pd.DataFrame(columns=["NORAD_CAT_ID", "OBJECT_NAME"]),
+        ],
+        ids=[
+            "missing column", "bad date", "null name", "non-positive id", "null id",
+            "non-numeric id", "non-string field", "empty result missing columns",
+        ],
+    )
+    def test_an_invalid_result_is_refused_and_the_old_file_kept(self, tmp_path, bad):
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+        before = cache.search_path("STARLINK").read_bytes()
+        with pytest.raises(CacheValidationError):
+            cache.store_search("STARLINK", bad)
+        assert cache.search_path("STARLINK").read_bytes() == before
+
+    @pytest.mark.parametrize("name, error", [("", ValueError), ("   ", ValueError), (None, TypeError)])
+    def test_an_empty_or_non_string_name_is_refused(self, tmp_path, name, error):
+        cache = TextOrbitCache(tmp_path)
+        with pytest.raises(error):
+            cache.search_path(name)
+        with pytest.raises(error):
+            cache.get_search(name)
+        with pytest.raises(error):
+            cache.store_search(name, STARLINK)
+
+
+def _rewrite(path, envelope, **changes):
+    envelope.update(changes)
+    path.write_text(json.dumps(envelope))
+
+
+def _rewrite_row(path, envelope, index, **changes):
+    envelope["records"][index].update(changes)
+    path.write_text(json.dumps(envelope))
+
+
+def _drop_key(path, envelope, index, key):
+    del envelope["records"][index][key]
+    path.write_text(json.dumps(envelope))
 
