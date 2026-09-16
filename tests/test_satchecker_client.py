@@ -7,6 +7,7 @@ import urllib.error
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 
 from satchecker_client import client
@@ -371,7 +372,9 @@ class TestSearchSatellites:
         assert frame["NORAD_CAT_ID"].tolist() == [64236, 64236, 47406]
         assert frame["NORAD_CAT_ID"].dtype.kind == "i"
         assert frame.loc[0, "LAUNCH_DATE"] == "2025-06-03"
-        assert frame.loc[1, "LAUNCH_DATE"] is None
+        # A missing value is None under pandas 2 and NaN under pandas 3's string
+        # dtype; either way it is null.
+        assert pd.isna(frame.loc[1, "LAUNCH_DATE"])
         assert frame.loc[1, "OBJECT_ID"] == "2025-119D"
         assert frame.loc[2, "DECAY_DATE"] == "2026-01-30"
 
@@ -450,5 +453,5 @@ class TestSearchSatellites:
         monkeypatch.setattr(client, "_http_get", lambda *a, **k: _search_payload(rows))
         frame = search_satellites("ISS")
         assert list(frame.columns) == client.SEARCH_COLUMNS
-        assert frame.loc[0, "DECAY_DATE"] is None
+        assert pd.isna(frame.loc[0, "DECAY_DATE"])
 
