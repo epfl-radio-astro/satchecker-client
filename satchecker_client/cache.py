@@ -130,7 +130,7 @@ def _validated_records(records, expected_norad_id: int) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
-def _cacheable(records: pd.DataFrame) -> pd.DataFrame:
+def _cacheable(records: pd.DataFrame, norad_id: int) -> pd.DataFrame:
     """*records* as the shared cache may hold them.
 
     The cache file is read by every application using this package, at whatever
@@ -139,21 +139,41 @@ def _cacheable(records: pd.DataFrame) -> pd.DataFrame:
     next store. So a TLE with no checksum digit is left out, and one repaired of a
     stray backslash is written with its lines in standard form. Both are also
     what any other reader would want: the first cannot be verified at all.
+
+    Only a record that is valid — allowing for those two defects, and belonging
+    to *norad_id* — is left out or repaired here. Anything else passes through
+    untouched, for :func:`_validated_records` to reject with a
+    :class:`CacheValidationError` as it always has.
     """
     keep = []
     frame = records.reset_index(drop=True).copy()
     for index, row in frame.iterrows():
-        if record_kind(row) != KIND_TLE:
+        try:
+            is_tle = record_kind(row) == KIND_TLE
+            lines = (row["TLE_LINE1"], row["TLE_LINE2"]) if is_tle else ()
+        except (KeyError, TypeError, ValueError):
             keep.append(index)
             continue
-        defects = set(tle_line_defects(row["TLE_LINE1"])) | set(
-            tle_line_defects(row["TLE_LINE2"])
-        )
+        if not is_tle or not all(isinstance(line, str) for line in lines):
+            keep.append(index)
+            continue
+        defects = set(tle_line_defects(lines[0])) | set(tle_line_defects(lines[1]))
+        if not defects:
+            keep.append(index)
+            continue
+        try:
+            if validate_record(row, allow_missing_checksum=True) != int(norad_id):
+                raise ValueError("record belongs to another satellite")
+            standard = (
+                validate_tle_line(lines[0], 1, allow_missing_checksum=True),
+                validate_tle_line(lines[1], 2, allow_missing_checksum=True),
+            )
+        except (KeyError, TypeError, ValueError, OverflowError):
+            keep.append(index)
+            continue
         if MISSING_CHECKSUM in defects:
             continue
-        if defects:
-            frame.at[index, "TLE_LINE1"] = validate_tle_line(row["TLE_LINE1"], 1)
-            frame.at[index, "TLE_LINE2"] = validate_tle_line(row["TLE_LINE2"], 2)
+        frame.at[index, "TLE_LINE1"], frame.at[index, "TLE_LINE2"] = standard
         keep.append(index)
     return frame.loc[keep].reset_index(drop=True)
 
@@ -306,7 +326,7 @@ class TextOrbitCache:
         if records.empty:
             return
         norad_id = int(norad_id)
-        incoming = _cacheable(records)
+        incoming = _cacheable(records, norad_id)
         if incoming.empty:
             return
         if "FETCHED_AT" not in incoming.columns:

@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from satchecker_client.cache import (
+    CacheValidationError,
     SCHEMA_VERSION,
     TextOrbitCache,
     read_legacy_tle_records,
@@ -338,3 +339,51 @@ def test_a_repaired_backslash_record_is_written_as_a_standard_line(tmp_path):
     for column in ("TLE_LINE1", "TLE_LINE2"):
         line = record[column]
         assert len(line) == 69 and int(line[68]) == tle_checksum(line)
+
+
+def _with_lines(norad_id, pair):
+    frame = make_catalogue_df([(norad_id, EPOCH)])
+    frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(pair)
+    return frame
+
+
+def _shifted_no_checksum_pair():
+    # 68 columns like an honest checksum-less line, but a character is missing
+    # mid-line: invalid even when missing checksums are allowed.
+    line1, line2 = NO_CHECKSUM_PAIR
+    return line1, line2[:20] + line2[21:] + "0"
+
+
+def _wrong_checksum_backslash_pair():
+    line1, line2 = STRAY_BACKSLASH_PAIR
+    return line1[:68] + str((int(line1[68]) + 1) % 10) + "\\", line2
+
+
+@pytest.mark.parametrize(
+    "build, norad_id",
+    [
+        # Malformed input must fail the way it did in 0.1.2, not with whatever
+        # the archive-defect handling happens to raise on the way.
+        (lambda: make_catalogue_df([(25544, EPOCH)]).assign(TLE_LINE1=None), 25544),
+        (lambda: make_catalogue_df([(25544, EPOCH)]).drop(columns=["TLE_LINE2"]), 25544),
+        (lambda: make_catalogue_df([(25544, EPOCH)]).assign(RECORD_KIND="bogus"), 25544),
+        (lambda: _with_lines(26867, _wrong_checksum_backslash_pair()), 26867),
+        # Not valid even allowing for a missing checksum, so not merely skipped.
+        (lambda: _with_lines(25544, _shifted_no_checksum_pair()), 25544),
+        (lambda: _with_lines(26867, NO_CHECKSUM_PAIR), 26867),  # ISS lines under another ID
+    ],
+    ids=[
+        "null line",
+        "missing line column",
+        "unknown record kind",
+        "backslash with a wrong checksum",
+        "checksum-less line missing a character",
+        "checksum-less record for another satellite",
+    ],
+)
+def test_invalid_records_still_raise_cache_validation_error(tmp_path, build, norad_id):
+    cache = TextOrbitCache(tmp_path)
+    with pytest.raises(CacheValidationError):
+        cache.store(norad_id, build())
+    assert not cache.path(norad_id).exists()
+
