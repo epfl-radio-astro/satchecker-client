@@ -327,6 +327,17 @@ def read_legacy_tle_records(directory) -> pd.DataFrame:
 
     Managed ``orbit-<NORAD>.json`` envelopes are intentionally not interpreted as
     explicit input.
+
+    Floats are decoded with pandas' correctly-rounded parser, so every finite
+    value down to the smallest normal double reads back as the double that was
+    written. Two limits remain, both pandas' rather than this reader's. A
+    subnormal magnitude — anything below 2.2250738585072014e-308 — can make
+    pandas raise, and the file is then skipped like any other unreadable one,
+    even when the value sits in a column this reader would have discarded. No
+    orbital element comes anywhere near that range. And pandas still infers
+    column types after decoding: a column whose values are all integral comes
+    back as integers, and ``-0.0`` loses its sign. This is accurate decoding of
+    each value, not a bit-for-bit round trip of a DataFrame.
     """
     directory = Path(directory)
     if not directory.is_dir():
@@ -334,7 +345,7 @@ def read_legacy_tle_records(directory) -> pd.DataFrame:
     frames = []
     for path in sorted(glob(str(directory / "*.json"))):
         try:
-            frame = pd.read_json(path)
+            frame = pd.read_json(path, precise_float=True)
         except (ValueError, OSError):
             continue
         if not any(

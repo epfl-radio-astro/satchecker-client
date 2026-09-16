@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from satchecker_client.cache import SCHEMA_VERSION, TextOrbitCache
+from satchecker_client.cache import (
+    SCHEMA_VERSION,
+    TextOrbitCache,
+    read_legacy_tle_records,
+)
 from satchecker_client.records import record_epoch_jd
 
 from .tle_helpers import (  # noqa: F401
@@ -16,6 +20,11 @@ from .tle_helpers import (  # noqa: F401
 
 
 EPOCH = jd(2023, 1, 1)
+
+
+def _native(value):
+    """A DataFrame cell as a plain Python scalar, for exact json round-trips."""
+    return value.item() if hasattr(value, "item") else value
 
 
 def test_store_and_get_round_trip(tmp_path):
@@ -132,6 +141,50 @@ class TestMixedKindCache:
             "BSTAR",
         ):
             assert loaded.loc[0, column] == stored.loc[0, column], column
+
+    def test_omm_elements_survive_a_replay_file_exactly(self, tmp_path):
+        """The legacy reader must decode each float to the double that was written.
+
+        ``pandas.read_json`` defaults to a fast float parser that is not
+        correctly rounded: it reads an eccentricity of 0.0066635 back as
+        0.006663499999999999, and a BSTAR of 3.2e-05 as 3.2000000000000005e-05.
+        Each is a different double, so a replayed trajectory quietly disagrees
+        with the run whose records the file was written to reproduce. Both
+        values are ordinary, and each fails on its own without the fix.
+
+        The file is built the way a replay writer must build one — stdlib
+        ``json``, column-oriented, floats through ``repr`` — because
+        ``DataFrame.to_json`` rounds to a fixed number of decimal places and
+        would corrupt these values on the way *out*, before the reader is even
+        reached. The hazard under test is the read.
+        """
+        sentinels = {"ECCENTRICITY": 0.0066635, "BSTAR": 3.2e-05}
+        stored = make_omm_catalogue_df([(25544, EPOCH)])
+        for column, value in sentinels.items():
+            stored.loc[0, column] = value
+        # .item() unwraps the NumPy scalars a DataFrame cell yields; json
+        # cannot serialise those, and a ``default=str`` fallback would write
+        # them as strings instead.
+        payload = {
+            column: {"0": _native(stored.loc[0, column])}
+            for column in stored.columns
+        }
+        text = json.dumps(payload)
+        (tmp_path / "replay.json").write_text(text)
+
+        # The premise: each sentinel reaches the file as a JSON *number*. A
+        # numeric string would be converted by pandas after parsing, bypassing
+        # the float parser under test, and the assertions below could then
+        # pass without exercising it.
+        written = json.loads(text)
+        for column, value in sentinels.items():
+            assert type(written[column]["0"]) is float, column
+            assert written[column]["0"] == value, column
+
+        loaded = read_legacy_tle_records(tmp_path)
+
+        for column, value in sentinels.items():
+            assert loaded.loc[0, column] == value, column
 
     def test_omm_records_dedupe_on_epoch_not_on_absent_lines(self, tmp_path):
         # Deduping on the TLE lines would collapse every OMM record into one,
