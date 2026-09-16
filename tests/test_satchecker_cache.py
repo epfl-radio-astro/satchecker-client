@@ -143,13 +143,14 @@ class TestMixedKindCache:
             assert loaded.loc[0, column] == stored.loc[0, column], column
 
     def test_omm_elements_survive_a_replay_file_exactly(self, tmp_path):
-        """The legacy reader must be as exact as the managed cache above.
+        """The legacy reader must decode each float to the double that was written.
 
         ``pandas.read_json`` defaults to a fast float parser that is not
-        correctly rounded: it reads 0.0066635 back as 0.006663499999999999, a
-        different double. For an OMM record that is the eccentricity, so a
-        replayed trajectory quietly disagrees with the run whose records the
-        file was written to reproduce.
+        correctly rounded: it reads an eccentricity of 0.0066635 back as
+        0.006663499999999999, and a BSTAR of 3.2e-05 as 3.2000000000000005e-05.
+        Each is a different double, so a replayed trajectory quietly disagrees
+        with the run whose records the file was written to reproduce. Both
+        values are ordinary, and each fails on its own without the fix.
 
         The file is built the way a replay writer must build one — stdlib
         ``json``, column-oriented, floats through ``repr`` — because
@@ -157,22 +158,33 @@ class TestMixedKindCache:
         would corrupt these values on the way *out*, before the reader is even
         reached. The hazard under test is the read.
         """
+        sentinels = {"ECCENTRICITY": 0.0066635, "BSTAR": 3.2e-05}
         stored = make_omm_catalogue_df([(25544, EPOCH)])
-        stored.loc[0, "ECCENTRICITY"] = 0.0066635
-        stored.loc[0, "MEAN_MOTION"] = 1.8959772500000001
+        for column, value in sentinels.items():
+            stored.loc[0, column] = value
         # .item() unwraps the NumPy scalars a DataFrame cell yields; json
-        # cannot serialise those, and a ``default=`` fallback would quietly
-        # write them as strings and make this test pass for the wrong reason.
+        # cannot serialise those, and a ``default=str`` fallback would write
+        # them as strings instead.
         payload = {
             column: {"0": _native(stored.loc[0, column])}
             for column in stored.columns
         }
-        (tmp_path / "replay.json").write_text(json.dumps(payload))
+        text = json.dumps(payload)
+        (tmp_path / "replay.json").write_text(text)
+
+        # The premise: each sentinel reaches the file as a JSON *number*. A
+        # numeric string would be converted by pandas after parsing, bypassing
+        # the float parser under test, and the assertions below could then
+        # pass without exercising it.
+        written = json.loads(text)
+        for column, value in sentinels.items():
+            assert type(written[column]["0"]) is float, column
+            assert written[column]["0"] == value, column
 
         loaded = read_legacy_tle_records(tmp_path)
 
-        for column in ("ECCENTRICITY", "MEAN_MOTION"):
-            assert loaded.loc[0, column] == stored.loc[0, column], column
+        for column, value in sentinels.items():
+            assert loaded.loc[0, column] == value, column
 
     def test_omm_records_dedupe_on_epoch_not_on_absent_lines(self, tmp_path):
         # Deduping on the TLE lines would collapse every OMM record into one,

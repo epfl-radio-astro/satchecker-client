@@ -182,7 +182,9 @@ error.
 
 {func}`~satchecker_client.cache.read_legacy_tle_records` reads a directory of
 plain pandas-oriented JSON files — the shape of a Space-Track `gp` export —
-for callers migrating from files they already have.
+for callers migrating from files they already have. Floats in those files read
+back as the exact doubles that were written; its reference entry notes the two
+cases where pandas still differs.
 
 ## What stays with the caller
 
