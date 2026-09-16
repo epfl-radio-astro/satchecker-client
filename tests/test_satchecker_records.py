@@ -24,6 +24,7 @@ from satchecker_client.records import (
     record_epoch_jd,
     record_kind,
     validate_record,
+    validated_record,
 )
 from satchecker_client._time import datetime_to_jd, jd_to_datetime
 
@@ -286,18 +287,6 @@ class TestValidateRecord:
 # Canonical single-record validation, with provenance
 # ---------------------------------------------------------------------------
 
-def _validated_record():
-    """Import the helper under test at call time.
-
-    It does not exist yet, so importing it at module level would stop this whole
-    file from collecting. Hoist it into the ``satchecker_client.records`` import
-    at the top once the helper lands.
-    """
-    from satchecker_client.records import validated_record
-
-    return validated_record
-
-
 def _without_checksum(line: str) -> str:
     """A valid line with its column-69 checksum digit removed.
 
@@ -329,7 +318,6 @@ class TestValidatedRecord:
     """
 
     def test_validated_record_returns_canonical_copy(self):
-        validated_record = _validated_record()
         record = make_tle_record(
             26867,
             jd(2010, 5, 31),
@@ -358,7 +346,6 @@ class TestValidatedRecord:
     def test_validated_record_accepts_a_dataframe_row(self):
         # Records arrive as rows of a fetched or cached frame, so a Series has to
         # be as acceptable as a mapping, and a plain dict has to come back.
-        validated_record = _validated_record()
         frame = pd.DataFrame([make_tle_record(25544, _EPOCH)])
 
         result = validated_record(frame.loc[0])
@@ -371,7 +358,6 @@ class TestValidatedRecord:
         "drop", [(1,), (2,), (1, 2)], ids=["line 1", "line 2", "both lines"]
     )
     def test_validated_record_missing_checksum_requires_opt_in(self, drop):
-        validated_record = _validated_record()
         line1, line2 = make_tle(25544, _EPOCH)
         if 1 in drop:
             line1 = _without_checksum(line1)
@@ -393,8 +379,6 @@ class TestValidatedRecord:
         assert accepted["TLE_CHECKSUM_STATUS"] == "unverified_missing_checksum"
 
     def test_validated_record_provenance_cannot_upgrade_unverified_input(self):
-        validated_record = _validated_record()
-
         # Checksum-less lines that claim to be verified. The claim is not
         # evidence; nothing in the record can verify those digits.
         line1, line2 = (_without_checksum(line) for line in make_tle(25544, _EPOCH))
@@ -449,7 +433,6 @@ class TestValidatedRecord:
     def test_validated_record_checks_row_and_embedded_ids(
         self, allow, overrides, message
     ):
-        validated_record = _validated_record()
         record = make_tle_record(25544, _EPOCH, **overrides)
         with pytest.raises(ValueError, match=message):
             validated_record(record, allow_missing_checksum=allow)
@@ -457,14 +440,12 @@ class TestValidatedRecord:
     @pytest.mark.parametrize("allow", [False, True], ids=["strict", "permissive"])
     def test_validated_record_rejects_a_corrupt_checksum_under_either_policy(self, allow):
         # Allowing *missing* checksums must not weaken what a present one means.
-        validated_record = _validated_record()
         line1, _ = make_tle(25544, _EPOCH)
         record = make_tle_record(25544, _EPOCH, TLE_LINE1=_wrong_checksum(line1))
         with pytest.raises(ValueError, match="checksum"):
             validated_record(record, allow_missing_checksum=allow)
 
     def test_validated_record_preserves_omm_and_metadata(self):
-        validated_record = _validated_record()
         record = make_omm(
             25544,
             _EPOCH,
@@ -507,7 +488,6 @@ class TestValidatedRecord:
     def test_validated_record_still_rejects_an_invalid_omm(self, allow, overrides):
         # The checksum opt-in is about TLE lines. It must not become a general
         # "accept anything" switch for the kind that has no checksum at all.
-        validated_record = _validated_record()
         with pytest.raises(ValueError):
             validated_record(
                 make_omm(25544, _EPOCH, **overrides), allow_missing_checksum=allow
