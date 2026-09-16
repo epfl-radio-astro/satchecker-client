@@ -55,7 +55,7 @@ import pandas as pd
 
 from ._version import __version__
 
-from ._time import datetime_to_jd
+from ._time import datetime_to_jd, is_iso_date
 from .records import KIND_FIELD, KIND_OMM, KIND_TLE, OMM_ELEMENT_COLUMNS
 
 
@@ -581,13 +581,23 @@ def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
 def _search_rows(payload, url: str) -> list[dict]:
     """The row objects of a ``search-satellites`` response, shape checked.
 
-    ``data`` is required rather than defaulted. A reply without it — an error
-    envelope served with HTTP 200, say — is not a search that matched nothing, and
-    reading it as one would silently drop every satellite a caller asked for. A
-    ``count`` that disagrees with the rows is rejected for the same reason: it is
-    the only signal that a reply was cut short.
+    The envelope is required in full rather than defaulted, because every way of
+    reading a broken reply leniently ends the same way: as a search that matched
+    nothing, silently dropping every satellite a caller asked for. So the reply
+    must be one object (or a list holding exactly one), carry no ``error`` field,
+    and carry both ``data`` and an integer ``count`` that agrees with it — the
+    count being the only sign that a reply was cut short.
     """
+    if isinstance(payload, list) and len(payload) != 1:
+        raise SatCheckerResponseError(
+            f"SatChecker search response is a list of {len(payload)} objects, "
+            f"not one ({url})"
+        )
     obj = _as_object(payload, url)
+    if "error" in obj:
+        raise SatCheckerResponseError(
+            f"SatChecker search response reports an error ({url}): {obj['error']!r}"
+        )
     if "data" not in obj:
         raise SatCheckerResponseError(
             f"SatChecker search response has no data field ({url}): "
@@ -600,16 +610,15 @@ def _search_rows(payload, url: str) -> list[dict]:
             f"{type(rows).__name__}"
         )
     count = obj.get("count")
-    if count is not None:
-        if isinstance(count, bool) or not isinstance(count, int):
-            raise SatCheckerResponseError(
-                f"SatChecker search response has a non-integer count ({url}): {count!r}"
-            )
-        if count != len(rows):
-            raise SatCheckerResponseError(
-                f"SatChecker search response reports {count} matches but carries "
-                f"{len(rows)} ({url})"
-            )
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise SatCheckerResponseError(
+            f"SatChecker search response has no integer count ({url}): {count!r}"
+        )
+    if count != len(rows):
+        raise SatCheckerResponseError(
+            f"SatChecker search response reports {count} matches but carries "
+            f"{len(rows)} ({url})"
+        )
     return rows
 
 
@@ -633,12 +642,10 @@ def _normalise_search(records: pd.DataFrame) -> pd.DataFrame:
         )
     for col in ("LAUNCH_DATE", "DECAY_DATE"):
         for value in df[col].dropna():
-            try:
-                datetime.strptime(value, "%Y-%m-%d")
-            except (TypeError, ValueError) as e:
+            if not is_iso_date(value):
                 raise SatCheckerResponseError(
                     f"SatChecker search response has an unreadable {col} {value!r}"
-                ) from e
+                )
     return df.reset_index(drop=True)
 
 

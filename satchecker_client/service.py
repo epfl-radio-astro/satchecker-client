@@ -17,6 +17,7 @@ from . import client
 from .records import KIND_OMM, KIND_TLE, record_kind, validate_record
 from .tle_parse import (
     MISSING_CHECKSUM,
+    decode_norad_id,
     tle_line_defects,
     validate_tle_line,
 )
@@ -73,7 +74,11 @@ RESPONSE_WALL_THRESHOLD = 10
 
 
 def validated_records(
-    records: pd.DataFrame, context: str, log: Callable[[str], None] = print
+    records: pd.DataFrame,
+    context: str,
+    log: Callable[[str], None] = print,
+    *,
+    allow_missing_checksum: bool = False,
 ) -> pd.DataFrame:
     """Return SatChecker rows that validate and belong to the ID they claim.
 
@@ -82,22 +87,26 @@ def validated_records(
     in-range elements and a plausible epoch. The identifier cross-check is
     vacuous for OMM — see :func:`satchecker_client.records.validate_record`.
 
-    A TLE with one of the defects of SatChecker's historical archive that
-    :func:`~satchecker_client.tle_parse.validate_tle_line` accepts is returned
-    with its lines in standard form, so what a caller propagates and what the
-    cache stores are clean lines. One warning then names those satellites,
-    separating records whose checksums verified once repaired from records with
-    no checksum to verify.
+    A TLE with one of the defects of SatChecker's historical archive is
+    returned with its lines in standard form. A stray backslash is always
+    repaired, since the checksum still verifies the line; a line with no checksum
+    digit is rejected unless *allow_missing_checksum* is true. One warning names
+    the satellites repaired or accepted this way, the verified separately from
+    the unverifiable. Rows are validated by position, so a frame with repeated
+    index labels is handled row by row.
     """
     result, verified_after_repair, unverified = _validate_and_repair(
-        records, context, log
+        records, context, log, allow_missing_checksum
     )
     _warn_archive_defects(context, verified_after_repair, unverified, log)
     return result
 
 
 def _validate_and_repair(
-    records: pd.DataFrame, context: str, log: Callable[[str], None]
+    records: pd.DataFrame,
+    context: str,
+    log: Callable[[str], None],
+    allow_missing_checksum: bool,
 ) -> tuple[pd.DataFrame, list[int], list[int]]:
     """:func:`validated_records` without the defect warning, which it returns instead.
 
@@ -108,6 +117,10 @@ def _validate_and_repair(
     """
     if not len(records):
         return records.copy(), [], []
+    # Positions, not labels: a frame concatenated without ignore_index repeats
+    # labels, and a repair written back by label would land on every row sharing
+    # it — another satellite's included.
+    records = records.reset_index(drop=True)
 
     valid_indices = []
     standard_lines: dict = {}
@@ -116,7 +129,9 @@ def _validate_and_repair(
     for index, row in records.iterrows():
         try:
             norad_id = int(row["NORAD_CAT_ID"])
-            embedded_id = validate_record(row)
+            embedded_id = validate_record(
+                row, allow_missing_checksum=allow_missing_checksum
+            )
             if embedded_id != norad_id:
                 raise ValueError(
                     f"record belongs to satellite {embedded_id}, not {norad_id}"
@@ -134,10 +149,17 @@ def _validate_and_repair(
             tle_line_defects(row["TLE_LINE2"])
         )
         if defects:
-            standard_lines[index] = (
-                validate_tle_line(row["TLE_LINE1"], 1),
-                validate_tle_line(row["TLE_LINE2"], 2),
+            line1 = validate_tle_line(
+                row["TLE_LINE1"], 1, allow_missing_checksum=allow_missing_checksum
             )
+            line2 = validate_tle_line(
+                row["TLE_LINE2"], 2, allow_missing_checksum=allow_missing_checksum
+            )
+            if decode_norad_id(line1[2:7]) != norad_id:
+                raise AssertionError(  # pragma: no cover - guards the repair itself
+                    f"repaired lines for {norad_id} carry {line1[2:7]!r}"
+                )
+            standard_lines[index] = (line1, line2)
             (unverified if MISSING_CHECKSUM in defects else verified_after_repair).append(
                 norad_id
             )
@@ -235,6 +257,7 @@ def fetch_nearest_batch(
     endpoint: str = "nearest-TLE",
     max_workers: int = MAX_WORKERS,
     log: Callable[[str], None] = print,
+    allow_missing_checksum: bool = True,
 ) -> NearestBatchResult:
     """Fetch exact-epoch nearest records with at most *max_workers* in flight.
 
@@ -259,6 +282,13 @@ def fetch_nearest_batch(
 
     A *response* failure is per-request — the service is answering — so it is
     recorded and the remaining IDs proceed.
+
+    Records from SatChecker's historical TLE archive are repaired as
+    :func:`validated_records` describes, and one warning at the end of the batch
+    names them. *allow_missing_checksum* defaults to true here, because that
+    archive is the known source of lines without checksum digits and rejecting
+    them leaves no TLE for much of 2001–2018; pass false to refuse records
+    nothing can verify.
     """
     ids = list(dict.fromkeys(int(value) for value in norad_ids))
     if not ids:
@@ -329,7 +359,10 @@ def fetch_nearest_batch(
                 if not len(record):
                     continue
                 record, repaired, unverifiable = _validate_and_repair(
-                    record, f"{endpoint} fetch for {norad_id}", log
+                    record,
+                    f"{endpoint} fetch for {norad_id}",
+                    log,
+                    allow_missing_checksum,
                 )
                 record = record[record["NORAD_CAT_ID"] == norad_id].reset_index(drop=True)
                 if len(record):

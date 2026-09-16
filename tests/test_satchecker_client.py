@@ -416,16 +416,25 @@ class TestSearchSatellites:
     @pytest.mark.parametrize(
         "payload, message",
         [
-            # An error envelope served with HTTP 200 is not "no matches".
-            (json.dumps({"error": "unavailable"}).encode(), "no data field"),
+            # An error envelope served with HTTP 200 is not "no matches", even
+            # when it carries an empty data list.
+            (json.dumps({"error": "unavailable"}).encode(), "reports an error"),
+            (json.dumps({"error": "unavailable", "data": [], "count": 0}).encode(), "reports an error"),
             (json.dumps({"count": 0}).encode(), "no data field"),
+            (json.dumps({"data": []}).encode(), "no integer count"),
+            (json.dumps({"count": None, "data": []}).encode(), "no integer count"),
             (json.dumps({"count": 0, "data": {}}).encode(), "unexpected search-satellites rows"),
             (json.dumps({"count": 1, "data": [1]}).encode(), "unexpected search-satellites rows"),
-            (b"[]", "unexpected response shape"),
+            (b"[]", "a list of 0 objects"),
+            (b"[1]", "unexpected response shape"),
+            (
+                json.dumps([json.loads(_search_payload([])), json.loads(_search_payload([]))]).encode(),
+                "a list of 2 objects",
+            ),
             (_search_payload([_search_row(1, "A")], count=5), "reports 5 matches but carries 1"),
-            (_search_payload([_search_row(1, "A")], count="1"), "non-integer count"),
+            (_search_payload([_search_row(1, "A")], count="1"), "no integer count"),
             # True == 1 in Python, so a boolean count must be refused explicitly.
-            (_search_payload([_search_row(1, "A")], count=True), "non-integer count"),
+            (_search_payload([_search_row(1, "A")], count=True), "no integer count"),
         ],
     )
     def test_malformed_responses_raise(self, monkeypatch, payload, message):
@@ -440,6 +449,9 @@ class TestSearchSatellites:
             (_search_row(1.5, "A"), "non-integer"),
             (_search_row(1, None), "missing satellite names"),
             (_search_row(1, "A", launch_date="2024/10/20"), "unreadable LAUNCH_DATE"),
+            # Dates are compared as strings downstream, so padding matters.
+            (_search_row(1, "A", launch_date="2024-10-1"), "unreadable LAUNCH_DATE"),
+            (_search_row(1, "A", decay_date="2024-1-20"), "unreadable DECAY_DATE"),
             (_search_row(1, "A", decay_date=20261020), "unreadable DECAY_DATE"),
         ],
     )
@@ -447,6 +459,11 @@ class TestSearchSatellites:
         monkeypatch.setattr(client, "_http_get", lambda *a, **k: _search_payload([row]))
         with pytest.raises(SatCheckerResponseError, match=message):
             search_satellites("A")
+
+    def test_a_single_envelope_wrapped_in_a_list_is_accepted(self, monkeypatch):
+        payload = json.dumps([json.loads(_search_payload([_search_row(1, "A")]))]).encode()
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: payload)
+        assert search_satellites("A")["NORAD_CAT_ID"].tolist() == [1]
 
     def test_missing_optional_fields_are_filled_not_fatal(self, monkeypatch):
         rows = [{"satellite_id": 25544, "satellite_name": "ISS (ZARYA)"}]

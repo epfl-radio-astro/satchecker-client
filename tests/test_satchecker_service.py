@@ -19,6 +19,7 @@ from satchecker_client.client import (
     SatCheckerResponseError,
     SatCheckerTransportError,
 )
+from satchecker_client.tle_parse import validate_tle_pair
 from satchecker_client.service import (
     NearestBatchResult,
     fetch_nearest_batch,
@@ -279,7 +280,9 @@ def test_archive_defects_are_repaired_and_reported_in_one_warning():
     frame.loc[2, ["TLE_LINE1", "TLE_LINE2"]] = list(BACKSLASH_FOR_CHECKSUM_PAIR)
     logged = []
 
-    result = validated_records(frame, "nearest-TLE", log=logged.append)
+    result = validated_records(
+        frame, "nearest-TLE", log=logged.append, allow_missing_checksum=True
+    )
 
     assert result["NORAD_CAT_ID"].tolist() == [11111, 26867, 25544]
     # Callers propagate, and the cache stores, the lines in standard form.
@@ -291,6 +294,36 @@ def test_archive_defects_are_repaired_and_reported_in_one_warning():
     assert "nearest-TLE" in logged[0]
     assert "1 had a stray backslash removed and then passed their checksums (26867)" in logged[0]
     assert "1 have no checksum digit, so nothing verifies their lines (25544)" in logged[0]
+
+
+def test_by_default_only_the_verifiable_repair_is_accepted():
+    frame = make_catalogue_df([(26867, OBS), (25544, OBS)])
+    frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(STRAY_BACKSLASH_PAIR)
+    frame.loc[1, ["TLE_LINE1", "TLE_LINE2"]] = list(BACKSLASH_FOR_CHECKSUM_PAIR)
+    logged = []
+
+    result = validated_records(frame, "test", log=logged.append)
+
+    assert result["NORAD_CAT_ID"].tolist() == [26867]
+    assert result.loc[0, "TLE_LINE1"] == STRAY_BACKSLASH_PAIR[0][:-1]
+    assert any("25544" in line and "not allowed" in line for line in logged)
+
+
+def test_repeated_index_labels_cannot_move_a_repair_onto_another_satellite():
+    # pd.concat without ignore_index repeats labels. Writing a repair back by
+    # label once put MOLNIYA's lines on the ISS row sharing its label.
+    iss = make_catalogue_df([(25544, OBS)])
+    molniya = make_catalogue_df([(26867, OBS)])
+    molniya.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(STRAY_BACKSLASH_PAIR)
+    frame = pd.concat([iss, molniya])
+    assert frame.index.tolist() == [0, 0]
+
+    result = validated_records(frame, "test", log=lambda _m: None)
+
+    assert result["NORAD_CAT_ID"].tolist() == [25544, 26867]
+    for row in result.itertuples():
+        assert validate_tle_pair(row.TLE_LINE1, row.TLE_LINE2) == row.NORAD_CAT_ID
+    assert result.loc[0, "TLE_LINE1"] == iss.loc[0, "TLE_LINE1"]
 
 
 def test_a_batch_without_archive_defects_warns_about_nothing():
@@ -312,7 +345,7 @@ def test_the_defect_warning_names_at_most_ten_satellites():
     for index in frame.index:
         frame.loc[index, ["TLE_LINE1", "TLE_LINE2"]] = list(NO_CHECKSUM_PAIR)
     logged = []
-    validated_records(frame, "test", log=logged.append)
+    validated_records(frame, "test", log=logged.append, allow_missing_checksum=True)
     assert len(logged) == 1
     assert "12 have no checksum digit" in logged[0]
     assert "and 2 more" in logged[0]
@@ -342,6 +375,21 @@ def test_a_batch_repairs_every_defect_and_warns_once_for_all_of_them():
     assert len(warnings) == 1
     assert "nearest-TLE: 2 TLE record(s)" in warnings[0]
     assert "(26867)" in warnings[0] and "(25544)" in warnings[0]
+
+
+def test_a_batch_can_refuse_records_without_checksums():
+    def fetch(norad_id, epoch_jd):
+        frame = make_catalogue_df([(norad_id, OBS)])
+        pair = {26867: STRAY_BACKSLASH_PAIR, 25544: NO_CHECKSUM_PAIR}[norad_id]
+        frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(pair)
+        return frame
+
+    result = fetch_nearest_batch(
+        [26867, 25544], OBS, fetch_nearest=fetch, log=lambda _m: None,
+        allow_missing_checksum=False,
+    )
+    assert result.records["NORAD_CAT_ID"].tolist() == [26867]
+    assert list(result.errors) == [25544]
 
 
 # ---------------------------------------------------------------------------

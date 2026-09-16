@@ -116,10 +116,22 @@ def test_a_frame_that_is_not_a_search_result_is_refused():
 
 
 @pytest.mark.parametrize("column", ["LAUNCH_DATE", "DECAY_DATE"])
-def test_an_unreadable_date_is_refused(column):
+@pytest.mark.parametrize(
+    "value",
+    [
+        "13/08/2022",
+        # Unpadded: a real date, but "2022-8-01" sorts after "2022-08-13" and
+        # would drop a satellite launched twelve days before the epoch.
+        "2022-8-01",
+        "2022-02-30",
+        "2022-0A-01",
+        "\uff12\uff10\uff12\uff12-08-01",  # full-width digits read by strptime
+    ],
+)
+def test_an_unreadable_date_is_refused(column, value):
     found = _found((1, "SAT", None, None))
     found[column] = found[column].astype(object)
-    found.loc[0, column] = "13/08/2022"
+    found.loc[0, column] = value
     with pytest.raises(ValueError, match=f"{column} values must be YYYY-MM-DD"):
         in_orbit_candidates(found, EPOCH)
 
@@ -128,3 +140,10 @@ def test_an_unreadable_date_is_refused(column):
 def test_a_non_finite_epoch_is_refused(epoch):
     with pytest.raises(ValueError, match="finite"):
         in_orbit_candidates(_found((1, "SAT", None, None)), epoch)
+
+
+def test_a_fractional_norad_id_is_refused_not_truncated():
+    found = _found((25544.5, "SAT", None, None))
+    with pytest.raises(ValueError, match="whole numbers"):
+        in_orbit_candidates(found, EPOCH)
+

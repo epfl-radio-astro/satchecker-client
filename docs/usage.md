@@ -133,8 +133,8 @@ What a match means is SatChecker's, and several parts of it are easy to get
 wrong:
 
 - The match is a **case-sensitive substring**. Catalogue names are almost all
-  upper case, so `"navstar"` finds nothing and `"NAVSTAR"` finds every GPS
-  satellite. A few names are mixed case, such as `DMSat-1`, so upper-casing a
+  upper case, so `"navstar"` finds nothing and `"NAVSTAR"` finds the 80
+  entries named `NAVSTAR …`. A few names are mixed case, such as `DMSat-1`, so upper-casing a
   query is a good default rather than a complete one.
 - `%` and `_` are **SQL wildcards**, and cannot be escaped.
 - **Rows are not satellites.** A satellite known by several names has a row for
@@ -179,13 +179,15 @@ with no dates is kept.
 
 What it returns is a shortlist. Debris carries its parent's launch date, so it is
 a candidate before it existed, and an object listed under two NORAD IDs is a
-candidate twice. The record fetched near the epoch is what decides: a fragment
-has no record before it was created, and a superseded catalogue number's records
-stop long before a later epoch. So check each record's age against the epoch you
-asked for — which you must do regardless, since neither record endpoint says
-when it has nothing near that epoch.
+candidate twice. Checking each record's age against the epoch you asked for —
+which you must do regardless, since neither record endpoint says when it has
+nothing near that epoch — removes much of that: debris asked about long before
+it was created, and a superseded catalogue number whose records stopped months
+earlier. It does not remove all of it. Debris first tracked within your age limit
+after the epoch still passes, and so can both of an object's numbers while a
+reassignment is recent; what to do about those is yours to decide.
 
-For Molniya at 2019-06-01, the search matched 170 satellites and 38 were
+For Molniya at 2019-06-01, the search returned 170 catalogue entries and 38 were
 candidates. 34 had a record within three days, three of them satellites that
 decayed later, between 2019 and 2024.
 
@@ -222,26 +224,34 @@ A **TLE** additionally gets two checks with no OMM equivalent:
   identifier and must agree with each other and with the row, so a record filed
   under the wrong satellite is caught.
 
-**SatChecker's historical TLE archive is an exception.** Records it backfilled
-from Space-Track, covering roughly 2001 to 2018 and every year from 2003 to 2016
-entirely, carry one of two defects, and rejecting them would leave no usable TLE
-for most of that period:
+**SatChecker's historical TLE archive is an exception.** Its records backfilled
+from Space-Track in May 2025 carry one of two defects. In a sample of three
+long-lived satellites on two dates a year, all six records were damaged in 2003
+and in every year from 2005 to 2016, and some in 2001–2002, 2004 and 2017–2018;
+that is a sample, not a survey of the archive.
 
-- **A stray backslash after line 1's last column.** It is removed, and the
-  checksum is then verified as usual; such a record is as trustworthy as a clean
-  one.
-- **No checksum digit** on one or both lines, with every field still in its
-  column. Such a line is accepted if each separator and decimal-point column is
-  where the format puts it, which catches a character dropped from mid-line.
-  Nothing verifies its digits.
+- **A stray backslash after line 1's last column.** It is always removed, and
+  the checksum is then verified as usual, so such a record is as trustworthy as
+  a clean one.
+- **No checksum digit** on one or both lines. Validation rejects such a line
+  unless the caller passes `allow_missing_checksum=True`, and then accepts it
+  only if every separator and decimal-point column is where the format puts it.
+  That catches a character dropped from most of the line, but not from line 2's
+  mean motion digits or revolution number, where a deletion moves no anchored
+  column: a line missing a mean motion digit validates, with a different mean
+  motion. Nothing verifies such a line's digits.
 
-{func}`~satchecker_client.service.fetch_nearest_batch` returns these records
-with their lines in standard form and logs one warning per batch naming the
-satellites, separately for the repaired and the unverifiable.
-{meth}`~satchecker_client.cache.TextOrbitCache.get` warns each time it serves an
-unverifiable record. A direct call to
-{func}`~satchecker_client.client.fetch_nearest_tle` reports the lines as the
-service sent them.
+{func}`~satchecker_client.service.fetch_nearest_batch` accepts both by default,
+since this archive is where lines without checksums come from, and pass
+`allow_missing_checksum=False` to refuse them. It returns the records with their
+lines in standard form and logs one warning per batch naming the satellites,
+separately for the repaired and the unverifiable. Records with no checksum digit
+are never written to the cache, which other applications and older versions of
+this package also read, so they are fetched again on each run. Everywhere else —
+{func}`~satchecker_client.records.validate_record` on a user's own files, for
+instance — lines without checksums are rejected unless the caller asks. A direct
+call to {func}`~satchecker_client.client.fetch_nearest_tle` reports the lines as
+the service sent them.
 
 **An OMM record has no checksum**, and there is no way to add one. Its `EPOCH`
 must parse as ISO 8601 and fall inside an absolute plausibility window (not

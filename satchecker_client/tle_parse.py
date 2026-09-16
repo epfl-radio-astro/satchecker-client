@@ -193,17 +193,21 @@ def parse_tle_elements(line1: str, line2: str) -> dict:
 #: A TLE line is exactly 69 columns, the last of which is a modulo-10 checksum.
 TLE_LINE_LENGTH = 69
 
-#: The two defects :func:`validate_tle_line` accepts rather than rejects. Both
-#: come from SatChecker's historical TLE archive: records it backfilled from
-#: Space-Track, covering roughly 2001 to 2018, carry a backslash after the last
-#: column of line 1, and some of them carry no checksum digit at all.
+#: Two defects of SatChecker's historical TLE archive, whose records backfilled
+#: from Space-Track in May 2025 carry a backslash after the last column of line 1
+#: and in some cases no checksum digit at all. :func:`validate_tle_line` always
+#: accepts the first, which the checksum still verifies, and accepts the second
+#: only when asked to.
 STRAY_BACKSLASH = "stray trailing backslash"
 MISSING_CHECKSUM = "missing checksum digit"
 
 #: Columns (0-based) that hold a separator or a decimal point in every
 #: well-formed line. Checked on a line with no checksum digit, where nothing else
 #: would notice a character dropped from mid-line: that shifts every later field
-#: one column left, and a shifted field can still parse.
+#: one column left, and a shifted field can still parse. It cannot catch a
+#: character dropped after the last anchor — line 2's mean motion digits and
+#: revolution number, line 1's element set number — because only unanchored
+#: digits move.
 _LAYOUT = {
     1: {8: " ", 17: " ", 23: ".", 32: " ", 34: ".", 43: " ", 52: " ", 61: " ", 63: " "},
     2: {
@@ -244,7 +248,9 @@ def tle_line_defects(line: str) -> tuple[str, ...]:
     return tuple(defects)
 
 
-def validate_tle_line(line: str, number: int) -> str:
+def validate_tle_line(
+    line: str, number: int, *, allow_missing_checksum: bool = False
+) -> str:
     """Validate one TLE line's marker, width and checksum; return it in standard form.
 
     The checksum is what makes single-character corruption detectable. Without
@@ -254,17 +260,22 @@ def validate_tle_line(line: str, number: int) -> str:
     tolerated (files routinely carry them); leading layout is not, because every
     field is read by column.
 
-    Two defects of SatChecker's historical TLE archive are accepted, and the
+    Two defects of SatChecker's historical TLE archive are handled, and the
     returned line has them undone as far as they can be:
 
-    - A **backslash after the last column** is removed. The checksum is then
-      verified as usual, so a line accepted this way is exactly as trustworthy as
-      a clean one.
-    - A **68-column line**, its checksum digit missing, is accepted if every
-      separator and decimal-point column is where the format puts it. Nothing
-      verifies its digits: a flipped digit in such a line goes unnoticed.
+    - A **backslash after the last column** is always removed. The checksum is
+      then verified as usual, so a line accepted this way is exactly as
+      trustworthy as a clean one.
+    - A **68-column line**, its checksum digit missing, is rejected unless
+      *allow_missing_checksum* is true, and then accepted only if every separator
+      and decimal-point column is where the format puts it. Nothing verifies its
+      digits: a flipped digit goes unnoticed, and so does a digit dropped from
+      line 2's mean motion or revolution number, which shifts no anchored
+      column. The mean motion of a genuine line and of one missing a fractional
+      digit look equally valid. Accept such lines only where their source is
+      known to omit checksums, and say so to whoever uses the result.
 
-    :func:`tle_line_defects` reports which of these a line needed.
+    :func:`tle_line_defects` reports which of these a line had.
     """
     if not isinstance(line, str):
         raise ValueError("TLE lines must be strings")
@@ -272,6 +283,12 @@ def validate_tle_line(line: str, number: int) -> str:
     if not trimmed.startswith(f"{number} "):
         raise ValueError(f"TLE line {number} must start with '{number} '")
     if len(trimmed) == TLE_LINE_LENGTH - 1:
+        if not allow_missing_checksum:
+            raise ValueError(
+                f"TLE line {number} must be {TLE_LINE_LENGTH} characters, got "
+                f"{len(trimmed)}: it has no checksum digit, and missing checksums "
+                "were not allowed"
+            )
         for column, expected in _LAYOUT[number].items():
             if trimmed[column] != expected:
                 raise ValueError(
@@ -299,7 +316,7 @@ def validate_tle_line(line: str, number: int) -> str:
     return trimmed
 
 
-def validate_tle_pair(line1, line2) -> int:
+def validate_tle_pair(line1, line2, *, allow_missing_checksum: bool = False) -> int:
     """Fully validate a TLE pair; return its decoded NORAD catalogue ID.
 
     Checks each line's width and modulo-10 checksum, then runs the *same* parser
@@ -309,11 +326,14 @@ def validate_tle_pair(line1, line2) -> int:
     both lines (Alpha-5 aware) and requires them to agree. Raises ``ValueError``
     on any problem, which callers treat as "reject this record and try another
     source".
+
+    *allow_missing_checksum* is passed to :func:`validate_tle_line`; see there
+    for what accepting a line without a checksum gives up.
     """
     if not (isinstance(line1, str) and isinstance(line2, str)):
         raise ValueError("TLE lines must be strings")
-    line1 = validate_tle_line(line1, 1)
-    line2 = validate_tle_line(line2, 2)
+    line1 = validate_tle_line(line1, 1, allow_missing_checksum=allow_missing_checksum)
+    line2 = validate_tle_line(line2, 2, allow_missing_checksum=allow_missing_checksum)
     id1 = decode_norad_id(line1[2:7])
     id2 = decode_norad_id(line2[2:7])
     if id1 != id2:

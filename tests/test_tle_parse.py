@@ -7,6 +7,7 @@ Alpha-5) and the guarantee that validation and parsing agree.
 
 import pytest
 
+from satchecker_client.records import validate_record
 from satchecker_client.tle_parse import (
     ELEMENT_FIELDS,
     MISSING_CHECKSUM,
@@ -220,9 +221,10 @@ class TestArchiveDefects:
 
     def test_a_backslash_in_place_of_the_checksum_leaves_an_unverified_line(self):
         line1, line2 = self.BACKSLASH_FOR_CHECKSUM_PAIR
-        assert validate_tle_pair(line1, line2) == 25544
-        assert validate_tle_line(line1, 1) == line1[:-1]
-        assert len(validate_tle_line(line1, 1)) == 68
+        assert validate_tle_pair(line1, line2, allow_missing_checksum=True) == 25544
+        repaired = validate_tle_line(line1, 1, allow_missing_checksum=True)
+        assert repaired == line1[:-1]
+        assert len(repaired) == 68
         assert tle_line_defects(line1) == (STRAY_BACKSLASH, MISSING_CHECKSUM)
         assert tle_line_defects(line2) == (MISSING_CHECKSUM,)
 
@@ -235,7 +237,32 @@ class TestArchiveDefects:
         assert elements["ECCENTRICITY"] == 0.000532
         assert elements["MEAN_MOTION"] == 15.54011654
         assert elements["BSTAR"] == pytest.approx(0.25686e-4)
-        assert validate_tle_pair(*self.NO_CHECKSUM_PAIR) == 25544
+        assert validate_tle_pair(*self.NO_CHECKSUM_PAIR, allow_missing_checksum=True) == 25544
+
+    @pytest.mark.parametrize("pair_name", ["BACKSLASH_FOR_CHECKSUM_PAIR", "NO_CHECKSUM_PAIR"])
+    def test_a_line_without_a_checksum_is_rejected_unless_allowed(self, pair_name):
+        # Strict by default: a user's own file with a truncated line must not be
+        # accepted just because SatChecker's archive needs the allowance.
+        with pytest.raises(ValueError, match="missing checksums were not allowed"):
+            validate_tle_pair(*getattr(self, pair_name))
+
+    @pytest.mark.parametrize("number", [1, 2])
+    def test_validate_tle_line_is_strict_by_default_too(self, number):
+        line = self.NO_CHECKSUM_PAIR[number - 1]
+        with pytest.raises(ValueError, match="missing checksums were not allowed"):
+            validate_tle_line(line, number)
+        assert validate_tle_line(line, number, allow_missing_checksum=True) == line
+
+    def test_validate_record_passes_the_allowance_through(self):
+        record = {
+            "NORAD_CAT_ID": 25544,
+            "RECORD_KIND": "tle",
+            "TLE_LINE1": self.NO_CHECKSUM_PAIR[0],
+            "TLE_LINE2": self.NO_CHECKSUM_PAIR[1],
+        }
+        with pytest.raises(ValueError, match="not allowed"):
+            validate_record(record)
+        assert validate_record(record, allow_missing_checksum=True) == 25544
 
     @pytest.mark.parametrize("line", [1, 2])
     def test_a_character_missing_mid_line_is_caught_without_a_checksum(self, line):
@@ -247,11 +274,11 @@ class TestArchiveDefects:
         pair[line - 1] = shifted
         assert len(shifted) == 68
         with pytest.raises(ValueError, match="a character is missing"):
-            validate_tle_pair(*pair)
+            validate_tle_pair(*pair, allow_missing_checksum=True)
 
     def test_a_clean_line_less_its_checksum_digit_is_accepted(self):
         line1, line2 = make_tle(25544, _EPOCH)
-        assert validate_tle_pair(line1[:68], line2) == 25544
+        assert validate_tle_pair(line1[:68], line2, allow_missing_checksum=True) == 25544
         assert tle_line_defects(line1[:68]) == (MISSING_CHECKSUM,)
 
     def test_a_stray_backslash_does_not_excuse_a_wrong_checksum(self):

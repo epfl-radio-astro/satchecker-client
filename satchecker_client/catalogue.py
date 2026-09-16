@@ -12,31 +12,34 @@ That makes it a shortlist, not a verdict. The catalogue's dates are incomplete,
 and some are true of an object without answering the question: debris is listed
 with its parent's launch date, so fragments of a 2009 collision are candidates
 in 2008. And one object can be listed under two NORAD IDs, both of which survive
-here. Whether a candidate existed at the epoch is settled by fetching its record
-near that epoch and checking the record's age — which the caller must do anyway,
-since neither record endpoint reports that it has nothing near the epoch asked
-for. A former analyst number whose records stop months earlier fails that check;
-so does debris asked about before it was created.
+here.
+
+The next check is the record fetched near the epoch, whose age the caller must
+test anyway, since neither record endpoint reports that it has nothing near the
+epoch asked for. It removes much of what the catalogue cannot: a superseded
+catalogue number whose records stopped months earlier, or debris asked about
+long before it was created. It is necessary, not conclusive. Debris first
+tracked within the age limit after the epoch still passes, and so can both of an
+object's catalogue numbers while a reassignment is recent. Deciding what to do
+about those is the caller's policy.
 """
 
 from __future__ import annotations
 
 import math
-from datetime import datetime
 
 import pandas as pd
 
-from ._time import jd_to_datetime
+from ._time import is_iso_date, jd_to_datetime
 
 #: Columns :func:`in_orbit_candidates` returns, one row per NORAD ID.
 CANDIDATE_COLUMNS = ["NORAD_CAT_ID", "OBJECT_NAME", "LAUNCH_DATE", "DECAY_DATE"]
 
 
 def _checked_date(value, column: str) -> str:
-    try:
-        datetime.strptime(value, "%Y-%m-%d")
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{column} values must be YYYY-MM-DD dates; got {value!r}") from e
+    # Exactly YYYY-MM-DD, since dates are compared as strings below.
+    if not is_iso_date(value):
+        raise ValueError(f"{column} values must be YYYY-MM-DD dates; got {value!r}")
     return value
 
 
@@ -82,6 +85,8 @@ def in_orbit_candidates(found: pd.DataFrame, epoch_jd: float) -> pd.DataFrame:
         found["LAUNCH_DATE"],
         found["DECAY_DATE"],
     ):
+        if isinstance(norad_id, float) and not norad_id.is_integer():
+            raise ValueError(f"NORAD_CAT_ID values must be whole numbers; got {norad_id!r}")
         entry = combined.setdefault(int(norad_id), [name, None, None])
         if not pd.isna(launch):
             launch = _checked_date(launch, "LAUNCH_DATE")

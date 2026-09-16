@@ -34,7 +34,7 @@ except ImportError:  # Windows
 
 import pandas as pd
 
-from .tle_parse import MISSING_CHECKSUM, tle_line_defects
+from .tle_parse import MISSING_CHECKSUM, tle_line_defects, validate_tle_line
 from .records import (
     KIND_FIELD,
     KIND_OMM,
@@ -130,16 +130,32 @@ def _validated_records(records, expected_norad_id: int) -> pd.DataFrame:
     return frame.reset_index(drop=True)
 
 
-def _unverified_tle_rows(frame: pd.DataFrame) -> int:
-    """How many rows are TLEs whose lines carry no checksum digit to verify."""
-    count = 0
-    for _, row in frame.iterrows():
-        if record_kind(row) == KIND_TLE and any(
-            MISSING_CHECKSUM in tle_line_defects(row[column])
-            for column in ("TLE_LINE1", "TLE_LINE2")
-        ):
-            count += 1
-    return count
+def _cacheable(records: pd.DataFrame) -> pd.DataFrame:
+    """*records* as the shared cache may hold them.
+
+    The cache file is read by every application using this package, at whatever
+    version each is on, and 0.1.x rejects a whole file — verified records
+    included — on meeting a TLE line it cannot validate, then overwrites it on its
+    next store. So a TLE with no checksum digit is left out, and one repaired of a
+    stray backslash is written with its lines in standard form. Both are also
+    what any other reader would want: the first cannot be verified at all.
+    """
+    keep = []
+    frame = records.reset_index(drop=True).copy()
+    for index, row in frame.iterrows():
+        if record_kind(row) != KIND_TLE:
+            keep.append(index)
+            continue
+        defects = set(tle_line_defects(row["TLE_LINE1"])) | set(
+            tle_line_defects(row["TLE_LINE2"])
+        )
+        if MISSING_CHECKSUM in defects:
+            continue
+        if defects:
+            frame.at[index, "TLE_LINE1"] = validate_tle_line(row["TLE_LINE1"], 1)
+            frame.at[index, "TLE_LINE2"] = validate_tle_line(row["TLE_LINE2"], 2)
+        keep.append(index)
+    return frame.loc[keep].reset_index(drop=True)
 
 
 def _drop_duplicates_per_kind(frame: pd.DataFrame) -> pd.DataFrame:
@@ -269,23 +285,13 @@ class TextOrbitCache:
                 )
             if envelope.get("norad_id") != int(norad_id):
                 raise CacheValidationError("orbit cache envelope has the wrong NORAD ID")
-            frame = _validated_records(envelope.get("records") or [], int(norad_id))
+            return _validated_records(envelope.get("records") or [], int(norad_id))
         except (OSError, ValueError, TypeError) as error:
             log(
                 f"  warning: cached orbit file {path} is unusable ({error}); "
                 "treating it as a cache miss"
             )
             return pd.DataFrame()
-        # Warned on every read, not only when fetched: a record served from the
-        # cache on later runs is no better verified than it was the first time.
-        unverified = _unverified_tle_rows(frame)
-        if unverified:
-            log(
-                f"  warning: cached orbit file {path} holds {unverified} TLE "
-                "record(s) with no checksum digit, a defect of SatChecker's "
-                "historical TLE archive; nothing verifies their lines"
-            )
-        return frame
 
     def store(self, norad_id: int, records: pd.DataFrame) -> None:
         """Merge newly fetched immutable records into one satellite's cache.
@@ -293,11 +299,16 @@ class TextOrbitCache:
         Concatenating kinds widens the frame — a TLE row gains null element
         columns and an OMM row gains null lines — which is why deduplication and
         validation are both per-row rather than per-column.
+
+        TLE records with no checksum digit are not written, and a batch made up
+        only of those leaves the file untouched; see :func:`_cacheable`.
         """
         if records.empty:
             return
         norad_id = int(norad_id)
-        incoming = records.copy()
+        incoming = _cacheable(records)
+        if incoming.empty:
+            return
         if "FETCHED_AT" not in incoming.columns:
             incoming["FETCHED_AT"] = datetime.now(timezone.utc).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"

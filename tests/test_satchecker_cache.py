@@ -2,6 +2,7 @@
 
 import json
 
+import pandas as pd
 import pytest
 
 from satchecker_client.cache import (
@@ -10,9 +11,11 @@ from satchecker_client.cache import (
     read_legacy_tle_records,
 )
 from satchecker_client.records import record_epoch_jd
+from satchecker_client.tle_parse import tle_checksum
 
 from .tle_helpers import (  # noqa: F401
     NO_CHECKSUM_PAIR,
+    STRAY_BACKSLASH_PAIR,
     block_network,
     jd,
     make_catalogue_df,
@@ -295,24 +298,43 @@ def test_a_tilde_cache_path_is_expanded(tmp_path, monkeypatch):
     assert (tmp_path / "orbits" / "orbit-25544.json").exists()
 
 
-def test_every_read_of_an_unverified_tle_warns(tmp_path):
-    # A record served from the cache on a later run is no better verified than
-    # when it was fetched, so the warning must not stop after the first run.
+def test_records_without_checksums_are_never_written_to_the_cache(tmp_path):
+    # The file is shared with other applications and with 0.1.x, which rejects a
+    # whole file over one line it cannot validate and then overwrites it.
     cache = TextOrbitCache(tmp_path)
-    frame = make_catalogue_df([(25544, EPOCH)])
-    frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(NO_CHECKSUM_PAIR)
-    cache.store(25544, frame)
-    for _ in range(2):
-        messages = []
-        assert len(cache.get(25544, log=messages.append)) == 1
-        assert len(messages) == 1
-        assert "no checksum digit" in messages[0]
+    verified = make_catalogue_df([(25544, EPOCH)])
+    unverifiable = make_catalogue_df([(25544, EPOCH + 5)])
+    unverifiable.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(NO_CHECKSUM_PAIR)
+
+    cache.store(25544, pd.concat([verified, unverifiable], ignore_index=True))
+
+    stored = json.loads(cache.path(25544).read_text())["records"]
+    assert [record["TLE_LINE1"] for record in stored] == [verified.loc[0, "TLE_LINE1"]]
 
 
-def test_reading_a_verified_tle_warns_about_nothing(tmp_path):
+def test_a_store_of_only_unverifiable_records_leaves_the_file_alone(tmp_path):
     cache = TextOrbitCache(tmp_path)
+    unverifiable = make_catalogue_df([(25544, EPOCH)])
+    unverifiable.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(NO_CHECKSUM_PAIR)
+
+    cache.store(25544, unverifiable)
+    assert not cache.path(25544).exists()
+
     cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
-    messages = []
-    assert len(cache.get(25544, log=messages.append)) == 1
-    assert messages == []
+    before = cache.path(25544).read_text()
+    cache.store(25544, unverifiable)
+    assert cache.path(25544).read_text() == before
 
+
+def test_a_repaired_backslash_record_is_written_as_a_standard_line(tmp_path):
+    # So a strict reader, 0.1.x included, can still read the file.
+    cache = TextOrbitCache(tmp_path)
+    frame = make_catalogue_df([(26867, EPOCH)])
+    frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(STRAY_BACKSLASH_PAIR)
+
+    cache.store(26867, frame)
+
+    (record,) = json.loads(cache.path(26867).read_text())["records"]
+    for column in ("TLE_LINE1", "TLE_LINE2"):
+        line = record[column]
+        assert len(line) == 69 and int(line[68]) == tle_checksum(line)
