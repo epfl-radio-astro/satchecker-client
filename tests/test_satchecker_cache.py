@@ -14,6 +14,7 @@ from satchecker_client.cache import (
     SearchSnapshot,
     TextOrbitCache,
     read_legacy_tle_records,
+    read_orbit_file,
 )
 from satchecker_client.client import SEARCH_COLUMNS
 from satchecker_client.records import record_epoch_jd
@@ -706,18 +707,6 @@ class TestSearchCache:
 # Strict reading of one explicit orbit table
 # ---------------------------------------------------------------------------
 
-def _read_orbit_file():
-    """Import the strict reader at call time.
-
-    It does not exist yet, so importing it at module level would stop this whole
-    file from collecting. Hoist it into the ``satchecker_client.cache`` import at
-    the top once it lands.
-    """
-    from satchecker_client.cache import read_orbit_file
-
-    return read_orbit_file
-
-
 FETCHED_TEXT = "2026-09-16T12:30:05Z"
 
 
@@ -794,7 +783,6 @@ _ORBIT_TABLE_FORMS = pytest.mark.parametrize(
 
 @_ORBIT_TABLE_FORMS
 def test_read_orbit_file_preserves_values_and_provenance(tmp_path, write):
-    read_orbit_file = _read_orbit_file()
     rows = _orbit_rows()
     path = tmp_path / "used_orbits.json"
     write(path, rows)
@@ -866,7 +854,6 @@ def test_read_orbit_file_errors_name_the_file(tmp_path, prepare):
     through to another source, or to no source at all, and the run then looks
     like one where the satellite simply had no record.
     """
-    read_orbit_file = _read_orbit_file()
     path = tmp_path / "used_orbits.json"
     prepare(path)
 
@@ -881,7 +868,6 @@ def test_read_orbit_file_errors_name_the_file(tmp_path, prepare):
     ids=["empty record list", "empty columns"],
 )
 def test_read_orbit_file_distinguishes_empty_table_from_invalid_file(tmp_path, text):
-    read_orbit_file = _read_orbit_file()
     path = tmp_path / "used_orbits.json"
     path.write_text(text)
 
@@ -893,6 +879,42 @@ def test_read_orbit_file_distinguishes_empty_table_from_invalid_file(tmp_path, t
     # is not there states nothing at all, and the two must not arrive alike.
     with pytest.raises((CacheValidationError, OSError)):
         read_orbit_file(tmp_path / "absent.json")
+
+
+def test_read_orbit_file_refuses_a_dict_of_lists(tmp_path):
+    """A third table shape is refused rather than guessed at.
+
+    ``{column: [value, ...]}`` is a shape a table could plausibly be written in,
+    and accepting it would also make a table of any JSON object whose every
+    field happens to be a list. An explicitly named file that reads as a
+    plausible-looking table of the wrong thing is worse than one that fails, so
+    the two documented shapes are the two that are read.
+    """
+    path = tmp_path / "used_orbits.json"
+    rows = _orbit_rows()
+    columns = list(dict.fromkeys(column for row in rows for column in row))
+    path.write_text(
+        json.dumps({column: [row.get(column) for row in rows] for column in columns})
+    )
+
+    with pytest.raises(CacheValidationError) as caught:
+        read_orbit_file(path)
+    assert str(path) in str(caught.value)
+
+
+def test_read_orbit_file_refuses_a_managed_cache_envelope(tmp_path):
+    """A managed ``orbit-<NORAD>.json`` file is not explicit input either.
+
+    The same decision ``read_legacy_tle_records`` makes, for the same reason: the
+    envelope carries a schema version and a satellite identity that only
+    ``TextOrbitCache.get`` checks, and reading it as a bare table would accept a
+    file of any version, filed under any satellite.
+    """
+    cache = TextOrbitCache(tmp_path)
+    cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
+
+    with pytest.raises(CacheValidationError, match="TextOrbitCache"):
+        read_orbit_file(cache.path(25544))
 
 
 def test_read_legacy_tle_records_is_unchanged_by_the_strict_reader(tmp_path):

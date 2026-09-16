@@ -636,6 +636,120 @@ _LEGACY_KEEP_COLUMNS = (
 )
 
 
+def _orbit_table_rows(payload, path: Path) -> list[dict]:
+    """Row objects of one explicit orbit table, in file order.
+
+    Which shapes are read and which are refused is :func:`read_orbit_file`'s
+    contract and is documented there. Index labels are read for one thing only —
+    checking that the columns agree about which rows exist — and then discarded,
+    so a row is addressed by position whichever shape the file used.
+    """
+    if isinstance(payload, list):
+        for index, row in enumerate(payload):
+            if not isinstance(row, dict):
+                raise CacheValidationError(
+                    f"orbit file {path} has a {type(row).__name__} at position "
+                    f"{index}, not a record object"
+                )
+        return payload
+    if not isinstance(payload, dict):
+        raise CacheValidationError(
+            f"orbit file {path} holds a {type(payload).__name__}, not an orbit table"
+        )
+    if "schema_version" in payload and "records" in payload:
+        raise CacheValidationError(
+            f"orbit file {path} is a managed orbit-<NORAD>.json cache envelope, "
+            "not an explicit orbit table; read it with TextOrbitCache.get, which "
+            "checks its schema version and satellite identity"
+        )
+    if not all(isinstance(column, dict) for column in payload.values()):
+        raise CacheValidationError(
+            f"orbit file {path} is neither a list of records nor a "
+            "{column: {index: value}} table"
+        )
+    indexes = [list(column) for column in payload.values()]
+    if any(index != indexes[0] for index in indexes[1:]):
+        raise CacheValidationError(
+            f"orbit file {path} has columns that disagree about which rows exist, "
+            "so no row can be assembled from it"
+        )
+    return [
+        {column: values[index] for column, values in payload.items()}
+        for index in (indexes[0] if indexes else [])
+    ]
+
+
+def _reject_nonfinite(literal: str):
+    """Refuse JSON's non-standard ``NaN`` / ``Infinity`` / ``-Infinity`` literals.
+
+    ``json.loads`` accepts all three by default, as floats. No orbital element
+    may ever be one, and an element that arrives as a NaN propagates to a
+    position that is silently nowhere, so the file is refused rather than the
+    value repaired.
+    """
+    raise ValueError(f"{literal} is not a number an orbit record may hold")
+
+
+def read_orbit_file(path) -> pd.DataFrame:
+    """Read one explicit orbit table from *path*, strictly.
+
+    For a caller that named a particular file — a replay's ``used_orbits.json``,
+    a hand-supplied table — and for which "not readable" must never be
+    indistinguishable from "no records here". Returns the table's rows as a
+    positionally indexed DataFrame, values and every column preserved:
+    provenance columns such as ``FETCHED_AT`` and
+    :data:`~satchecker_client.records.CHECKSUM_STATUS_FIELD` survive, and each
+    number is the double that was written, subnormals and ``-0.0`` included,
+    because the standard library's JSON parser is correctly rounded and nothing
+    here re-infers a value.
+
+    Two shapes are tables, and they are the two an orbit table gets written in: a
+    top-level list of record objects, and the ``{column: {index: value}}``
+    orientation ``DataFrame.to_json()`` writes by default. A supported but empty
+    table reads as an empty frame — that is a completed run stating it selected
+    nothing, which a missing file does not state.
+
+    Nothing else is read as well as it can be. Two shapes are worth naming for
+    what they are:
+
+    - ``{column: [value, ...]}``, a dict of lists, is *not* a table here. It
+      would make one of any JSON object whose every field happens to be a list,
+      and an explicitly named file that reads as a plausible-looking table of the
+      wrong thing is worse than one that fails.
+    - A managed ``orbit-<NORAD>.json`` envelope is not explicit input either, the
+      same decision :func:`read_legacy_tle_records` makes. It carries a schema
+      version and a per-satellite identity contract that :meth:`TextOrbitCache.get`
+      checks and nothing else does; reading it as a bare table would bypass both.
+
+    No policy is applied. Records are neither validated, repaired, filtered nor
+    checked against a satellite: an unverifiable TLE line comes back byte for
+    byte, for the caller to accept or refuse through
+    :func:`~satchecker_client.records.validated_record`. That is the difference
+    from :meth:`TextOrbitCache.get`, which reads *its own* files and enforces
+    their contract.
+
+    Raises :class:`CacheValidationError`, naming the path, for content that is
+    not a readable orbit table; ``OSError`` for a file that cannot be read at
+    all. Neither is ever an empty frame — an empty frame would let an unreadable
+    file fall through to another source, and the run would then look like one
+    where the satellite simply had no record.
+    """
+    path = Path(path)
+    text = path.read_text()  # OSError, naming the path, for missing or unreadable
+    try:
+        payload = json.loads(text, parse_constant=_reject_nonfinite)
+    except ValueError as error:
+        raise CacheValidationError(
+            f"orbit file {path} is not readable JSON: {error}"
+        ) from error
+    rows = _orbit_table_rows(payload, path)
+    if not rows:
+        # The columns of an empty column-oriented table are still known, and a
+        # caller reading a column off an empty frame should not have to guess.
+        return pd.DataFrame(columns=list(payload) if isinstance(payload, dict) else [])
+    return pd.DataFrame(rows)
+
+
 def read_legacy_tle_records(directory) -> pd.DataFrame:
     """Read explicit user/replay ``*.json`` orbit tables from *directory*.
 
