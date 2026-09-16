@@ -375,6 +375,20 @@ def _wrong_checksum_backslash_pair():
         # Not valid even allowing for a missing checksum, so not merely skipped.
         (lambda: _with_lines(25544, _shifted_no_checksum_pair()), 25544),
         (lambda: _with_lines(26867, NO_CHECKSUM_PAIR), 26867),  # ISS lines under another ID
+        # The row's own ID matters as well as the one in its lines.
+        (lambda: _with_lines(26867, NO_CHECKSUM_PAIR), 25544),
+        (lambda: _with_lines(25544, NO_CHECKSUM_PAIR).assign(NORAD_CAT_ID=None), 25544),
+        (lambda: _with_lines(25544, NO_CHECKSUM_PAIR).drop(columns=["NORAD_CAT_ID"]), 25544),
+        (lambda: _with_lines(25544, NO_CHECKSUM_PAIR).assign(NORAD_CAT_ID=25544.5), 25544),
+        (lambda: _with_lines(25544, STRAY_BACKSLASH_PAIR), 26867),
+        # One bad row fails the whole store rather than quietly dropping out of it.
+        (
+            lambda: pd.concat(
+                [make_catalogue_df([(25544, EPOCH)]), _with_lines(26867, NO_CHECKSUM_PAIR)],
+                ignore_index=True,
+            ),
+            25544,
+        ),
     ],
     ids=[
         "null line",
@@ -383,6 +397,12 @@ def _wrong_checksum_backslash_pair():
         "backslash with a wrong checksum",
         "checksum-less line missing a character",
         "checksum-less record for another satellite",
+        "checksum-less record under another row ID",
+        "checksum-less record with a null row ID",
+        "checksum-less record with no row ID column",
+        "checksum-less record with a fractional row ID",
+        "backslash record under another row ID",
+        "mixed batch with one misfiled checksum-less row",
     ],
 )
 def test_invalid_records_still_raise_cache_validation_error(tmp_path, build, norad_id):
@@ -489,6 +509,27 @@ class TestSearchCache:
         assert len(cache.get(25544)) == 1
         # A directory scan for replay files skips both kinds of cache file.
         assert read_legacy_tle_records(tmp_path).empty
+
+    def test_another_service_is_cached_under_its_own_key(self, tmp_path, monkeypatch):
+        # The client reads BASE_URL when it sends a request; the cache must read
+        # it at the same moment, or a mirror's result lands on the default
+        # service's file labelled as the default service's.
+        from satchecker_client import client
+
+        cache = TextOrbitCache(tmp_path)
+        default_url = client.BASE_URL
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+        default_path = cache.search_path("STARLINK")
+
+        monkeypatch.setattr(client, "BASE_URL", "https://mirror.example.org/tools")
+        assert cache.search_path("STARLINK") != default_path
+        assert cache.get_search("STARLINK") is None
+        cache.store_search("STARLINK", STARLINK.iloc[[0]], fetched_at=FETCHED)
+        mirror = json.loads(cache.search_path("STARLINK").read_text())
+        assert mirror["base_url"] == "https://mirror.example.org/tools"
+
+        monkeypatch.setattr(client, "BASE_URL", default_url)
+        assert len(cache.get_search("STARLINK").found) == 3
 
     def test_missing_values_are_written_as_null_not_nan(self, tmp_path):
         # pandas 3 reads a missing string back as NaN, and json.dump writes NaN as

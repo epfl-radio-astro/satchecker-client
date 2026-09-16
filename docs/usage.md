@@ -310,13 +310,23 @@ if too_old:
         sc.store_or_warn(
             lambda: cache.store_search(name, found), cache.search_path(name), "search result"
         )
-    except sc.SatCheckerTransportError:
+    except sc.SatCheckerTransportError as error:
         if snapshot is None:
             raise
-        found = snapshot.found  # offline: fall back to the older result, and say so
+        print(
+            f"warning: could not refresh the search for {name!r} ({error}); using "
+            f"the result fetched {snapshot.fetched_at:%Y-%m-%d %H:%M} UTC, "
+            f"{len(snapshot.found)} rows"
+        )
+        found = snapshot.found
 else:
     found = snapshot.found
 ```
+
+Say so whenever you fall back like this. An out-of-date result can include a
+satellite that has since been ruled out or miss one added since, and a cached
+empty result selects nothing at all; the warning is how whoever runs it finds
+out.
 
 What makes this different from the orbit records shapes how the files behave:
 

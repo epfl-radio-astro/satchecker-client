@@ -45,7 +45,8 @@ except ImportError:  # Windows
 import pandas as pd
 
 from ._time import is_iso_date
-from .client import BASE_URL, SEARCH_COLUMNS
+from . import client
+from .client import SEARCH_COLUMNS
 from .tle_parse import MISSING_CHECKSUM, tle_line_defects, validate_tle_line
 from .records import (
     KIND_FIELD,
@@ -176,9 +177,15 @@ def _checked_search_name(name) -> str:
 
 
 def _search_key(name: str) -> str:
-    """Digest of everything that decides a search's result: service, endpoint, name."""
+    """Digest of everything that decides a search's result: service, endpoint, name.
+
+    The service is read from :data:`client.BASE_URL` at call time, as
+    :func:`~satchecker_client.client.search_satellites` reads it, so a caller
+    pointing the client at another service also caches that service's results
+    under their own keys rather than over the default service's.
+    """
     material = json.dumps(
-        {"base_url": BASE_URL, "endpoint": _SEARCH_ENDPOINT, "name": name},
+        {"base_url": client.BASE_URL, "endpoint": _SEARCH_ENDPOINT, "name": name},
         sort_keys=True,
         ensure_ascii=False,
     )
@@ -269,10 +276,10 @@ def _snapshot_from_envelope(envelope, name: str) -> SearchSnapshot:
         raise CacheValidationError(
             f"search cache file is for endpoint {envelope.get('endpoint')!r}"
         )
-    if envelope.get("base_url") != BASE_URL:
+    if envelope.get("base_url") != client.BASE_URL:
         raise CacheValidationError(
             f"search cache file is for service {envelope.get('base_url')!r}, "
-            f"not {BASE_URL!r}"
+            f"not {client.BASE_URL!r}"
         )
     if envelope.get("name") != name:
         raise CacheValidationError(
@@ -315,7 +322,8 @@ def _cacheable(records: pd.DataFrame, norad_id: int) -> pd.DataFrame:
     what any other reader would want: the first cannot be verified at all.
 
     Only a record that is valid — allowing for those two defects, and belonging
-    to *norad_id* — is left out or repaired here. Anything else passes through
+    to *norad_id* by both its row ID and the ID in its lines — is left out or
+    repaired here. Anything else passes through
     untouched, for :func:`_validated_records` to reject with a
     :class:`CacheValidationError` as it always has.
     """
@@ -336,6 +344,13 @@ def _cacheable(records: pd.DataFrame, norad_id: int) -> pd.DataFrame:
             keep.append(index)
             continue
         try:
+            # The row's own ID as well as the one in its lines: validate_record
+            # reads only the lines, and a row filed under a missing, null,
+            # fractional or different ID is one _validated_records must see and
+            # reject. A missing column raises KeyError, None raises TypeError, and
+            # NaN or a fraction compares unequal.
+            if float(row["NORAD_CAT_ID"]) != int(norad_id):
+                raise ValueError("record is filed under another satellite")
             if validate_record(row, allow_missing_checksum=True) != int(norad_id):
                 raise ValueError("record belongs to another satellite")
             standard = (
@@ -589,7 +604,7 @@ class TextOrbitCache:
         envelope = {
             "schema_version": SEARCH_SCHEMA_VERSION,
             "endpoint": _SEARCH_ENDPOINT,
-            "base_url": BASE_URL,
+            "base_url": client.BASE_URL,
             "name": name,
             "fetched_at": fetched_at.astimezone(timezone.utc).strftime(_FETCHED_AT_FORMAT),
             "count": len(records),
