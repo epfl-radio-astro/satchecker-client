@@ -334,7 +334,13 @@ def read_legacy_tle_records(directory) -> pd.DataFrame:
     frames = []
     for path in sorted(glob(str(directory / "*.json"))):
         try:
-            frame = pd.read_json(path)
+            # precise_float: pandas' default JSON float parser is not correctly
+            # rounded, and reads an eccentricity of 0.0066635 back as
+            # 0.006663499999999999 — a different double. For a replay file that
+            # silently changes the trajectory the file was written to reproduce.
+            # The managed cache never had this: it reads through stdlib json,
+            # whose parser is correctly rounded. This matches it.
+            frame = pd.read_json(path, precise_float=True)
         except (ValueError, OSError):
             continue
         if not any(

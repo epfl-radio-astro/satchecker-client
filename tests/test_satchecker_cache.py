@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from satchecker_client.cache import SCHEMA_VERSION, TextOrbitCache
+from satchecker_client.cache import (
+    SCHEMA_VERSION,
+    TextOrbitCache,
+    read_legacy_tle_records,
+)
 from satchecker_client.records import record_epoch_jd
 
 from .tle_helpers import (  # noqa: F401
@@ -16,6 +20,11 @@ from .tle_helpers import (  # noqa: F401
 
 
 EPOCH = jd(2023, 1, 1)
+
+
+def _native(value):
+    """A DataFrame cell as a plain Python scalar, for exact json round-trips."""
+    return value.item() if hasattr(value, "item") else value
 
 
 def test_store_and_get_round_trip(tmp_path):
@@ -131,6 +140,38 @@ class TestMixedKindCache:
             "MEAN_MOTION",
             "BSTAR",
         ):
+            assert loaded.loc[0, column] == stored.loc[0, column], column
+
+    def test_omm_elements_survive_a_replay_file_exactly(self, tmp_path):
+        """The legacy reader must be as exact as the managed cache above.
+
+        ``pandas.read_json`` defaults to a fast float parser that is not
+        correctly rounded: it reads 0.0066635 back as 0.006663499999999999, a
+        different double. For an OMM record that is the eccentricity, so a
+        replayed trajectory quietly disagrees with the run whose records the
+        file was written to reproduce.
+
+        The file is built the way a replay writer must build one — stdlib
+        ``json``, column-oriented, floats through ``repr`` — because
+        ``DataFrame.to_json`` rounds to a fixed number of decimal places and
+        would corrupt these values on the way *out*, before the reader is even
+        reached. The hazard under test is the read.
+        """
+        stored = make_omm_catalogue_df([(25544, EPOCH)])
+        stored.loc[0, "ECCENTRICITY"] = 0.0066635
+        stored.loc[0, "MEAN_MOTION"] = 1.8959772500000001
+        # .item() unwraps the NumPy scalars a DataFrame cell yields; json
+        # cannot serialise those, and a ``default=`` fallback would quietly
+        # write them as strings and make this test pass for the wrong reason.
+        payload = {
+            column: {"0": _native(stored.loc[0, column])}
+            for column in stored.columns
+        }
+        (tmp_path / "replay.json").write_text(json.dumps(payload))
+
+        loaded = read_legacy_tle_records(tmp_path)
+
+        for column in ("ECCENTRICITY", "MEAN_MOTION"):
             assert loaded.loc[0, column] == stored.loc[0, column], column
 
     def test_omm_records_dedupe_on_epoch_not_on_absent_lines(self, tmp_path):
