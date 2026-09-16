@@ -1,7 +1,8 @@
 """Client for the IAU CPS SatChecker orbital-record service, split by responsibility.
 
 - :mod:`satchecker_client.client` — HTTP transport and response normalisation
-  for both nearest-record endpoints; standard library plus pandas, nothing else.
+  for both nearest-record endpoints and the catalogue name search; standard
+  library plus pandas, nothing else.
 - :mod:`satchecker_client.tle_parse` — TLE line parsing, and the element range
   checks both record kinds share.
 - :mod:`satchecker_client.records` — what a record is, when it is valid, and
@@ -23,6 +24,7 @@ from .client import (
     BASE_URL,
     HANDOVER_JD,
     OMM_COLUMNS,
+    SEARCH_COLUMNS,
     TLE_COLUMNS,
     SatCheckerError,
     SatCheckerRateLimitError,
@@ -30,6 +32,7 @@ from .client import (
     SatCheckerTransportError,
     fetch_nearest_omm,
     fetch_nearest_tle,
+    search_satellites,
     set_client_identifier,
     user_agent,
 )
@@ -61,6 +64,7 @@ __all__ = [
     "BASE_URL",
     "HANDOVER_JD",
     "OMM_COLUMNS",
+    "SEARCH_COLUMNS",
     "TLE_COLUMNS",
     "fetch_nearest_omm",
     "nearest_endpoints_for",
@@ -69,6 +73,7 @@ __all__ = [
     "SatCheckerResponseError",
     "SatCheckerTransportError",
     "fetch_nearest_tle",
+    "search_satellites",
     "set_client_identifier",
     "user_agent",
     "CacheValidationError",

@@ -114,6 +114,46 @@ including the IDs never sent after an outage), and `outage` (set when the
 service itself was the problem — the signal that retrying against the *other*
 endpoint would be asking a down service a different question).
 
+## Finding satellites by name
+
+{func}`~satchecker_client.client.search_satellites` turns a name into catalogue
+entries, for callers that select satellites by name rather than by number:
+
+```python
+found = sc.search_satellites("NAVSTAR")
+found[["NORAD_CAT_ID", "OBJECT_NAME", "LAUNCH_DATE", "DECAY_DATE"]]
+```
+
+It returns one row per catalogue entry the service matched, with
+{data}`~satchecker_client.client.SEARCH_COLUMNS`, and an empty frame when nothing
+matches. It is one request however many satellites match; it does not fetch any
+orbital records.
+
+What a match means is SatChecker's, and several parts of it are easy to get
+wrong:
+
+- The match is a **case-sensitive substring**. Catalogue names are almost all
+  upper case, so `"navstar"` finds nothing and `"NAVSTAR"` finds every GPS
+  satellite. A few names are mixed case, such as `DMSat-1`, so upper-casing a
+  query is a good default rather than a complete one.
+- `%` and `_` are **SQL wildcards**, and cannot be escaped.
+- **Rows are not satellites.** A satellite known by several names has a row for
+  each, and those rows may not carry the same fields — one can have a launch
+  date its alias lacks. Combine a satellite's rows before deciding anything
+  about it.
+- **NORAD IDs are not objects either.** The same object can be listed under two
+  catalogue numbers, with the same name and `OBJECT_ID`, and nothing in the
+  response says which one is current. Selecting both means counting it twice.
+- **Decayed objects are included**, with a `DECAY_DATE`. Whether a satellite
+  that has since re-entered belongs in a result depends on the epoch you are
+  modelling, which is the caller's to judge.
+
+An empty name raises `ValueError` before any request is made: SatChecker reads
+it as no filter and would return the whole catalogue. A reply that does not have
+the expected shape — no `data` rows, or a `count` that disagrees with them —
+raises {class}`~satchecker_client.client.SatCheckerResponseError` rather than
+passing for a search that matched nothing.
+
 ## Asking about a record
 
 Records are pandas rows. Rather than testing for columns yourself, ask:

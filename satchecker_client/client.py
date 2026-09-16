@@ -21,6 +21,13 @@ to preserve the original TLE format, which leaves catalogue numbers above 99999
 with no TLE representation at all. Which endpoint to ask is
 :mod:`satchecker_client.service`'s decision, not this module's.
 
+A third endpoint answers a different question — which satellites exist, rather
+than where one of them is:
+
+``GET /tools/search-satellites/``
+    Catalogue entries whose name contains a given string. See
+    :func:`search_satellites` for what a match does and does not identify.
+
 Neither archive reports "I have nothing that old". ``get-nearest-omm`` answers a
 2021 request with its earliest 2026-07-11 record, 4.6 years off epoch, and says
 nothing about the discrepancy. Callers are expected to check the epoch they got
@@ -132,6 +139,19 @@ OMM_COLUMNS = [
     "DATE_COLLECTED",
 ]
 
+# Columns the normalised catalogue-search frames expose. ``OBJECT_ID`` is the
+# international (COSPAR) designator, as it is in the OMM frames; the two dates are
+# ISO ``YYYY-MM-DD`` strings, or null where the catalogue has none.
+SEARCH_COLUMNS = [
+    "NORAD_CAT_ID",
+    "OBJECT_NAME",
+    "OBJECT_ID",
+    "OBJECT_TYPE",
+    "RCS_SIZE",
+    "LAUNCH_DATE",
+    "DECAY_DATE",
+]
+
 # SatChecker response field -> normalised column name.
 _FIELD_RENAME = {
     "satellite_id": "NORAD_CAT_ID",
@@ -152,6 +172,16 @@ _FIELD_RENAME_OMM = {
     "satellite_name": "OBJECT_NAME",
     "data_source": "DATA_SOURCE",
     "date_collected": "DATE_COLLECTED",
+}
+
+_FIELD_RENAME_SEARCH = {
+    "satellite_id": "NORAD_CAT_ID",
+    "satellite_name": "OBJECT_NAME",
+    "international_designator": "OBJECT_ID",
+    "object_type": "OBJECT_TYPE",
+    "rcs_size": "RCS_SIZE",
+    "launch_date": "LAUNCH_DATE",
+    "decay_date": "DECAY_DATE",
 }
 
 # Fields lifted out of each row's nested ``orbital_elements`` object. SatChecker
@@ -546,3 +576,112 @@ def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     rows = _requested_rows(rows, norad_id, "get-nearest-omm", url)
     lifted = _lift_orbital_elements(rows, url)
     return _normalise_omm(_frame(lifted, "get-nearest-omm", url))
+
+
+def _search_rows(payload, url: str) -> list[dict]:
+    """The row objects of a ``search-satellites`` response, shape checked.
+
+    ``data`` is required rather than defaulted. A reply without it — an error
+    envelope served with HTTP 200, say — is not a search that matched nothing, and
+    reading it as one would silently drop every satellite a caller asked for. A
+    ``count`` that disagrees with the rows is rejected for the same reason: it is
+    the only signal that a reply was cut short.
+    """
+    obj = _as_object(payload, url)
+    if "data" not in obj:
+        raise SatCheckerResponseError(
+            f"SatChecker search response has no data field ({url}): "
+            f"keys {sorted(obj)}"
+        )
+    rows = obj["data"]
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise SatCheckerResponseError(
+            f"SatChecker returned unexpected search-satellites rows ({url}): "
+            f"{type(rows).__name__}"
+        )
+    count = obj.get("count")
+    if count is not None:
+        if isinstance(count, bool) or not isinstance(count, int):
+            raise SatCheckerResponseError(
+                f"SatChecker search response has a non-integer count ({url}): {count!r}"
+            )
+        if count != len(rows):
+            raise SatCheckerResponseError(
+                f"SatChecker search response reports {count} matches but carries "
+                f"{len(rows)} ({url})"
+            )
+    return rows
+
+
+def _normalise_search(records: pd.DataFrame) -> pd.DataFrame:
+    """Rename search fields to :data:`SEARCH_COLUMNS` and check each row.
+
+    The same error contract as the record normalisers: a satellite ID must be a
+    usable integer, a name must be present, and a date must be ``YYYY-MM-DD`` or
+    null. Dates stay strings, as the service sends them; ISO dates compare
+    correctly as strings, and a caller wanting an instant parses them itself.
+    """
+    df = records.rename(columns=_FIELD_RENAME_SEARCH)
+    for col in SEARCH_COLUMNS:
+        if col not in df.columns:
+            df[col] = None
+    df = df[SEARCH_COLUMNS].copy()
+    df["NORAD_CAT_ID"] = _checked_ids(df)
+    if df["OBJECT_NAME"].isnull().any():
+        raise SatCheckerResponseError(
+            "SatChecker search response is missing satellite names (satellite_name)"
+        )
+    for col in ("LAUNCH_DATE", "DECAY_DATE"):
+        for value in df[col].dropna():
+            try:
+                datetime.strptime(value, "%Y-%m-%d")
+            except (TypeError, ValueError) as e:
+                raise SatCheckerResponseError(
+                    f"SatChecker search response has an unreadable {col} {value!r}"
+                ) from e
+    return df.reset_index(drop=True)
+
+
+def search_satellites(name: str) -> pd.DataFrame:
+    """Catalogue entries whose name contains *name*, one row per entry as served.
+
+    Returns a frame with :data:`SEARCH_COLUMNS`; empty, with those columns, when
+    nothing matches. The match is SatChecker's, and it has sharp edges that this
+    function reports rather than hides:
+
+    - **Case-sensitive.** The catalogue is written almost entirely in upper case,
+      so ``"starlink"`` matches nothing. Upper-casing the query covers most
+      names, but not all: a few are mixed case, such as ``DMSat-1`` and
+      ``OSCAR 9 (UoSAT 1)``, and no single spelling of a query matches every
+      case variant.
+    - ``%`` **and** ``_`` **are wildcards.** The service matches with SQL
+      ``LIKE`` and does not escape them: ``%`` matches any run of characters and
+      ``_`` any one character.
+    - **A NORAD ID can appear on several rows**, one per name the entry is known
+      by, and the rows need not carry the same fields: ``STARLINK-11691`` has a
+      launch date and ``STARLINK-11691 [DTC]``, the same satellite, does not. To
+      decide anything per satellite, combine its rows rather than taking the
+      first.
+    - **One object can appear under several NORAD IDs**, the same name and
+      ``OBJECT_ID`` on each, for instance where a catalogue number was
+      reassigned. Nothing in the response says which ID is current.
+    - **Decayed objects are included**, with a ``DECAY_DATE``. Whether one
+      belongs in a result depends on the epoch the caller cares about, so the
+      filtering is left to the caller.
+
+    An empty or all-whitespace *name* raises :class:`ValueError` without a
+    request: SatChecker treats it as no filter at all and returns the entire
+    catalogue, which is never what such a call meant.
+    """
+    if not isinstance(name, str):
+        raise TypeError(f"name must be a string, not {type(name).__name__}")
+    if not name.strip():
+        raise ValueError(
+            "name must not be empty: SatChecker treats an empty name as no filter "
+            "and returns the entire catalogue"
+        )
+    url = f"{BASE_URL}/search-satellites/?" + urllib.parse.urlencode({"name": name})
+    rows = _search_rows(_load_json(_http_get(url), url), url)
+    if not rows:
+        return pd.DataFrame(columns=SEARCH_COLUMNS)
+    return _normalise_search(_frame(rows, "search-satellites", url))

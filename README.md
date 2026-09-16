@@ -13,9 +13,9 @@ needed.
 
 ## What it does
 
-- **Transport** — both nearest-record endpoints, with normalised column sets and
-  a typed error hierarchy that separates a per-satellite miss from a service
-  outage or a rate limit.
+- **Transport** — both nearest-record endpoints and the catalogue name search,
+  with normalised column sets and a typed error hierarchy that separates a
+  per-satellite miss from a service outage or a rate limit.
 - **Parsing** — TLE line parsing including Alpha-5 catalogue numbers and
   checksums, plus the element range and finiteness checks both record kinds
   share.
