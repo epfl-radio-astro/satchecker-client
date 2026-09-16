@@ -34,6 +34,7 @@ except ImportError:  # Windows
 
 import pandas as pd
 
+from .tle_parse import MISSING_CHECKSUM, tle_line_defects
 from .records import (
     KIND_FIELD,
     KIND_OMM,
@@ -127,6 +128,18 @@ def _validated_records(records, expected_norad_id: int) -> pd.DataFrame:
                 f"record belongs to satellite {embedded_id}, not {expected_norad_id}"
             )
     return frame.reset_index(drop=True)
+
+
+def _unverified_tle_rows(frame: pd.DataFrame) -> int:
+    """How many rows are TLEs whose lines carry no checksum digit to verify."""
+    count = 0
+    for _, row in frame.iterrows():
+        if record_kind(row) == KIND_TLE and any(
+            MISSING_CHECKSUM in tle_line_defects(row[column])
+            for column in ("TLE_LINE1", "TLE_LINE2")
+        ):
+            count += 1
+    return count
 
 
 def _drop_duplicates_per_kind(frame: pd.DataFrame) -> pd.DataFrame:
@@ -256,13 +269,23 @@ class TextOrbitCache:
                 )
             if envelope.get("norad_id") != int(norad_id):
                 raise CacheValidationError("orbit cache envelope has the wrong NORAD ID")
-            return _validated_records(envelope.get("records") or [], int(norad_id))
+            frame = _validated_records(envelope.get("records") or [], int(norad_id))
         except (OSError, ValueError, TypeError) as error:
             log(
                 f"  warning: cached orbit file {path} is unusable ({error}); "
                 "treating it as a cache miss"
             )
             return pd.DataFrame()
+        # Warned on every read, not only when fetched: a record served from the
+        # cache on later runs is no better verified than it was the first time.
+        unverified = _unverified_tle_rows(frame)
+        if unverified:
+            log(
+                f"  warning: cached orbit file {path} holds {unverified} TLE "
+                "record(s) with no checksum digit, a defect of SatChecker's "
+                "historical TLE archive; nothing verifies their lines"
+            )
+        return frame
 
     def store(self, norad_id: int, records: pd.DataFrame) -> None:
         """Merge newly fetched immutable records into one satellite's cache.

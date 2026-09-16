@@ -222,6 +222,27 @@ A **TLE** additionally gets two checks with no OMM equivalent:
   identifier and must agree with each other and with the row, so a record filed
   under the wrong satellite is caught.
 
+**SatChecker's historical TLE archive is an exception.** Records it backfilled
+from Space-Track, covering roughly 2001 to 2018 and every year from 2003 to 2016
+entirely, carry one of two defects, and rejecting them would leave no usable TLE
+for most of that period:
+
+- **A stray backslash after line 1's last column.** It is removed, and the
+  checksum is then verified as usual; such a record is as trustworthy as a clean
+  one.
+- **No checksum digit** on one or both lines, with every field still in its
+  column. Such a line is accepted if each separator and decimal-point column is
+  where the format puts it, which catches a character dropped from mid-line.
+  Nothing verifies its digits.
+
+{func}`~satchecker_client.service.fetch_nearest_batch` returns these records
+with their lines in standard form and logs one warning per batch naming the
+satellites, separately for the repaired and the unverifiable.
+{meth}`~satchecker_client.cache.TextOrbitCache.get` warns each time it serves an
+unverifiable record. A direct call to
+{func}`~satchecker_client.client.fetch_nearest_tle` reports the lines as the
+service sent them.
+
 **An OMM record has no checksum**, and there is no way to add one. Its `EPOCH`
 must parse as ISO 8601 and fall inside an absolute plausibility window (not
 before 1957, not more than a year in the future); that and the range checks are

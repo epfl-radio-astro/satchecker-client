@@ -20,7 +20,8 @@ needed.
   epoch, past epochs included.
 - **Parsing** — TLE line parsing including Alpha-5 catalogue numbers and
   checksums, plus the element range and finiteness checks both record kinds
-  share.
+  share. The defects of SatChecker's historical TLE archive are repaired where a
+  checksum can confirm it, and accepted with a warning where it cannot.
 - **Kind dispatch** — one place that knows how TLE and OMM records differ, so
   callers spanning the archive handover do not thread a format flag through
   their own code.

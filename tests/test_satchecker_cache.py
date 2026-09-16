@@ -12,6 +12,7 @@ from satchecker_client.cache import (
 from satchecker_client.records import record_epoch_jd
 
 from .tle_helpers import (  # noqa: F401
+    NO_CHECKSUM_PAIR,
     block_network,
     jd,
     make_catalogue_df,
@@ -292,3 +293,26 @@ def test_a_tilde_cache_path_is_expanded(tmp_path, monkeypatch):
     cache = TextOrbitCache("~/orbits")
     cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
     assert (tmp_path / "orbits" / "orbit-25544.json").exists()
+
+
+def test_every_read_of_an_unverified_tle_warns(tmp_path):
+    # A record served from the cache on a later run is no better verified than
+    # when it was fetched, so the warning must not stop after the first run.
+    cache = TextOrbitCache(tmp_path)
+    frame = make_catalogue_df([(25544, EPOCH)])
+    frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(NO_CHECKSUM_PAIR)
+    cache.store(25544, frame)
+    for _ in range(2):
+        messages = []
+        assert len(cache.get(25544, log=messages.append)) == 1
+        assert len(messages) == 1
+        assert "no checksum digit" in messages[0]
+
+
+def test_reading_a_verified_tle_warns_about_nothing(tmp_path):
+    cache = TextOrbitCache(tmp_path)
+    cache.store(25544, make_catalogue_df([(25544, EPOCH)]))
+    messages = []
+    assert len(cache.get(25544, log=messages.append)) == 1
+    assert messages == []
+

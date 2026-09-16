@@ -28,6 +28,10 @@ from satchecker_client.service import (
 )
 
 from .tle_helpers import (  # noqa: F401  block_network is an autouse fixture
+    BACKSLASH_FOR_CHECKSUM_PAIR,
+    NO_CHECKSUM_PAIR,
+    STRAY_BACKSLASH_PAIR,
+    make_omm_catalogue_df,
     block_network,
     jd,
     make_catalogue_df,
@@ -267,6 +271,77 @@ def test_validated_records_keeps_the_valid_rows_and_drops_the_broken_one():
 
 def test_validated_records_passes_an_empty_frame_through():
     assert validated_records(pd.DataFrame(), "test", log=lambda _m: None).empty
+
+
+def test_archive_defects_are_repaired_and_reported_in_one_warning():
+    frame = make_catalogue_df([(11111, OBS), (26867, OBS), (25544, OBS)])
+    frame.loc[1, ["TLE_LINE1", "TLE_LINE2"]] = list(STRAY_BACKSLASH_PAIR)
+    frame.loc[2, ["TLE_LINE1", "TLE_LINE2"]] = list(BACKSLASH_FOR_CHECKSUM_PAIR)
+    logged = []
+
+    result = validated_records(frame, "nearest-TLE", log=logged.append)
+
+    assert result["NORAD_CAT_ID"].tolist() == [11111, 26867, 25544]
+    # Callers propagate, and the cache stores, the lines in standard form.
+    assert result.loc[0, "TLE_LINE1"] == frame.loc[0, "TLE_LINE1"]
+    assert result.loc[1, "TLE_LINE1"] == STRAY_BACKSLASH_PAIR[0][:-1]
+    assert [len(result.loc[2, column]) for column in ("TLE_LINE1", "TLE_LINE2")] == [68, 68]
+    assert not result["TLE_LINE1"].str.endswith("\\").any()
+    assert len(logged) == 1
+    assert "nearest-TLE" in logged[0]
+    assert "1 had a stray backslash removed and then passed their checksums (26867)" in logged[0]
+    assert "1 have no checksum digit, so nothing verifies their lines (25544)" in logged[0]
+
+
+def test_a_batch_without_archive_defects_warns_about_nothing():
+    logged = []
+    validated_records(make_catalogue_df([(1, OBS), (2, OBS)]), "test", log=logged.append)
+    assert logged == []
+
+
+def test_omm_records_pass_the_defect_check_untouched():
+    frame = make_omm_catalogue_df([(25544, OBS), (26867, OBS)])
+    logged = []
+    result = validated_records(frame, "nearest-OMM", log=logged.append)
+    assert result["NORAD_CAT_ID"].tolist() == [25544, 26867]
+    assert logged == []
+
+
+def test_the_defect_warning_names_at_most_ten_satellites():
+    frame = make_catalogue_df([(25544, OBS)] * 12)
+    for index in frame.index:
+        frame.loc[index, ["TLE_LINE1", "TLE_LINE2"]] = list(NO_CHECKSUM_PAIR)
+    logged = []
+    validated_records(frame, "test", log=logged.append)
+    assert len(logged) == 1
+    assert "12 have no checksum digit" in logged[0]
+    assert "and 2 more" in logged[0]
+
+
+def test_a_batch_repairs_every_defect_and_warns_once_for_all_of_them():
+    # The batch validates each satellite separately; the warning must still be
+    # one line for the batch, not one per satellite.
+    pairs = {26867: STRAY_BACKSLASH_PAIR, 25544: BACKSLASH_FOR_CHECKSUM_PAIR}
+
+    def fetch(norad_id, epoch_jd):
+        frame = make_catalogue_df([(norad_id, OBS)])
+        if norad_id in pairs:
+            frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(pairs[norad_id])
+        return frame
+
+    logged = []
+    result = fetch_nearest_batch(
+        [11111, 26867, 25544], OBS, fetch_nearest=fetch, endpoint="nearest-TLE",
+        log=logged.append,
+    )
+
+    assert result.errors == {}
+    assert result.records["NORAD_CAT_ID"].tolist() == [11111, 26867, 25544]
+    assert not result.records["TLE_LINE1"].str.endswith("\\").any()
+    warnings = [line for line in logged if "known defects" in line]
+    assert len(warnings) == 1
+    assert "nearest-TLE: 2 TLE record(s)" in warnings[0]
+    assert "(26867)" in warnings[0] and "(25544)" in warnings[0]
 
 
 # ---------------------------------------------------------------------------

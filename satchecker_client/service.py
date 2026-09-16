@@ -14,7 +14,12 @@ from typing import Callable, Optional
 import pandas as pd
 
 from . import client
-from .records import KIND_OMM, KIND_TLE, validate_record
+from .records import KIND_OMM, KIND_TLE, record_kind, validate_record
+from .tle_parse import (
+    MISSING_CHECKSUM,
+    tle_line_defects,
+    validate_tle_line,
+)
 
 
 MAX_WORKERS = 5
@@ -76,11 +81,38 @@ def validated_records(
     identifier in both lines *and* in the row; an OMM row must carry finite,
     in-range elements and a plausible epoch. The identifier cross-check is
     vacuous for OMM — see :func:`satchecker_client.records.validate_record`.
+
+    A TLE with one of the defects of SatChecker's historical archive that
+    :func:`~satchecker_client.tle_parse.validate_tle_line` accepts is returned
+    with its lines in standard form, so what a caller propagates and what the
+    cache stores are clean lines. One warning then names those satellites,
+    separating records whose checksums verified once repaired from records with
+    no checksum to verify.
+    """
+    result, verified_after_repair, unverified = _validate_and_repair(
+        records, context, log
+    )
+    _warn_archive_defects(context, verified_after_repair, unverified, log)
+    return result
+
+
+def _validate_and_repair(
+    records: pd.DataFrame, context: str, log: Callable[[str], None]
+) -> tuple[pd.DataFrame, list[int], list[int]]:
+    """:func:`validated_records` without the defect warning, which it returns instead.
+
+    Returns the validated frame and the NORAD IDs of its repaired records, split
+    into those whose checksums verified after repair and those with none. A batch
+    collects these across every satellite and warns once, rather than once per
+    satellite.
     """
     if not len(records):
-        return records.copy()
+        return records.copy(), [], []
 
     valid_indices = []
+    standard_lines: dict = {}
+    verified_after_repair: list[int] = []
+    unverified: list[int] = []
     for index, row in records.iterrows():
         try:
             norad_id = int(row["NORAD_CAT_ID"])
@@ -96,7 +128,56 @@ def validated_records(
             )
             continue
         valid_indices.append(index)
-    return records.loc[valid_indices].reset_index(drop=True)
+        if record_kind(row) != KIND_TLE:
+            continue
+        defects = set(tle_line_defects(row["TLE_LINE1"])) | set(
+            tle_line_defects(row["TLE_LINE2"])
+        )
+        if defects:
+            standard_lines[index] = (
+                validate_tle_line(row["TLE_LINE1"], 1),
+                validate_tle_line(row["TLE_LINE2"], 2),
+            )
+            (unverified if MISSING_CHECKSUM in defects else verified_after_repair).append(
+                norad_id
+            )
+
+    result = records.loc[valid_indices].copy()
+    for index, (line1, line2) in standard_lines.items():
+        result.at[index, "TLE_LINE1"] = line1
+        result.at[index, "TLE_LINE2"] = line2
+    return result.reset_index(drop=True), verified_after_repair, unverified
+
+
+def _id_list(norad_ids: list[int], shown: int = 10) -> str:
+    listed = ", ".join(str(norad_id) for norad_id in norad_ids[:shown])
+    return listed + (f" and {len(norad_ids) - shown} more" if len(norad_ids) > shown else "")
+
+
+def _warn_archive_defects(
+    context: str,
+    verified_after_repair: list[int],
+    unverified: list[int],
+    log: Callable[[str], None],
+) -> None:
+    if not (verified_after_repair or unverified):
+        return
+    parts = []
+    if verified_after_repair:
+        parts.append(
+            f"{len(verified_after_repair)} had a stray backslash removed and then "
+            f"passed their checksums ({_id_list(verified_after_repair)})"
+        )
+    if unverified:
+        parts.append(
+            f"{len(unverified)} have no checksum digit, so nothing verifies their "
+            f"lines ({_id_list(unverified)})"
+        )
+    log(
+        f"  warning: {context}: {len(verified_after_repair) + len(unverified)} TLE "
+        "record(s) carry known defects of SatChecker's historical TLE archive and "
+        "were accepted — " + "; ".join(parts)
+    )
 
 
 def store_or_warn(
@@ -187,6 +268,8 @@ def fetch_nearest_batch(
 
     rows: dict[int, pd.DataFrame] = {}
     errors: dict[int, client.SatCheckerError] = {}
+    verified_after_repair: list[int] = []
+    unverified: list[int] = []
     worker_count = min(max_workers, len(ids))
     unsent = iter(ids)
     outage: client.SatCheckerError | None = None
@@ -245,10 +328,13 @@ def fetch_nearest_batch(
                 wall_status, wall_count = None, 0
                 if not len(record):
                     continue
-                record = validated_records(
+                record, repaired, unverifiable = _validate_and_repair(
                     record, f"{endpoint} fetch for {norad_id}", log
                 )
                 record = record[record["NORAD_CAT_ID"] == norad_id].reset_index(drop=True)
+                if len(record):
+                    verified_after_repair += [i for i in repaired if i == norad_id]
+                    unverified += [i for i in unverifiable if i == norad_id]
                 if len(record):
                     rows[norad_id] = record
                 else:
@@ -274,6 +360,8 @@ def fetch_nearest_batch(
                 "request(s) — every one would add load to a service that has "
                 "already failed or asked us to back off"
             )
+
+    _warn_archive_defects(endpoint, verified_after_repair, unverified, log)
 
     records = (
         pd.concat([rows[norad_id] for norad_id in ids if norad_id in rows], ignore_index=True)

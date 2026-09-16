@@ -275,3 +275,24 @@ def make_nearest_omm_json(pairs) -> bytes:
 def make_omm_catalogue_df(pairs) -> pd.DataFrame:
     """Normalised OMM frame, as the client returns it."""
     return pd.DataFrame([make_omm(nid, ep) for nid, ep in pairs])
+
+
+# Pairs exactly as SatChecker served them from its historical TLE archive, which
+# it backfilled from Space-Track in May 2025 and which covers roughly 2001 to 2018.
+
+#: MOLNIYA 3-51, 2010-05-31. A backslash after line 1's checksum digit.
+STRAY_BACKSLASH_PAIR = (
+    "1 26867U 01030A   10151.93652587 -.00000240  00000-0  00000+0 0  1679\\",
+    "2 26867 064.1086 163.3579 6993334 262.5587 298.3771 02.00663096 64955",
+)
+#: ISS, 2002-02-14. The backslash sits where line 1's checksum digit should be,
+#: and line 2 has none.
+BACKSLASH_FOR_CHECKSUM_PAIR = (
+    "1 25544U 98067A   02045.96990741 +.00070121 +00000-0 +80403-3 0 0077\\",
+    "2 25544 051.6380 307.2850 0005471 076.2538 108.4793 15.6142243618496",
+)
+#: ISS, 2017-05-14. Neither line has a checksum digit, nor a backslash.
+NO_CHECKSUM_PAIR = (
+    "1 25544U 98067A   17134.67768638 +.00001213 +00000-0 +25686-4 0 0250",
+    "2 25544 051.6421 205.3341 0005320 156.4557 304.6694 15.5401165405654",
+)

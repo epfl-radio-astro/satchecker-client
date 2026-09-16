@@ -9,15 +9,27 @@ import pytest
 
 from satchecker_client.tle_parse import (
     ELEMENT_FIELDS,
+    MISSING_CHECKSUM,
+    STRAY_BACKSLASH,
     decode_norad_id,
     parse_tle_elements,
     semimajor_axis_km,
     tle_checksum,
+    tle_line_defects,
     validate_elements,
+    validate_tle_line,
     validate_tle_pair,
 )
 
-from .tle_helpers import jd, make_omm, make_tle, with_checksum
+from .tle_helpers import (
+    BACKSLASH_FOR_CHECKSUM_PAIR,
+    NO_CHECKSUM_PAIR,
+    STRAY_BACKSLASH_PAIR,
+    jd,
+    make_omm,
+    make_tle,
+    with_checksum,
+)
 
 _EPOCH = jd(2023, 2, 21, 13)
 # Letters used by Alpha-5, in value order: I and O are excluded to avoid
@@ -139,9 +151,11 @@ class TestLineIntegrity:
         assert validate_tle_pair(l1 + "  \n", l2 + "\r\n") == 25544
 
     @pytest.mark.parametrize("line", [1, 2])
-    def test_short_line_is_rejected(self, line):
+    def test_a_line_short_by_more_than_its_checksum_is_rejected(self, line):
+        # Short by exactly the checksum digit is an accepted archive defect; see
+        # TestArchiveDefects.
         pair = list(self._pair())
-        pair[line - 1] = pair[line - 1][:-1]
+        pair[line - 1] = pair[line - 1][:-2]
         with pytest.raises(ValueError, match="69 characters"):
             validate_tle_pair(*pair)
 
@@ -183,6 +197,77 @@ class TestLineIntegrity:
         assert tle_checksum("1" * 68) == 68 % 10
         assert tle_checksum(" " * 68) == 0
 
+
+
+class TestArchiveDefects:
+    """The two defects of SatChecker's historical TLE archive that are accepted.
+
+    The fixtures, in ``tle_helpers``, are pairs exactly as SatChecker served
+    them.
+    """
+
+    STRAY_BACKSLASH_PAIR = STRAY_BACKSLASH_PAIR
+    BACKSLASH_FOR_CHECKSUM_PAIR = BACKSLASH_FOR_CHECKSUM_PAIR
+    NO_CHECKSUM_PAIR = NO_CHECKSUM_PAIR
+
+    def test_a_stray_backslash_is_removed_and_the_checksum_still_verified(self):
+        line1, line2 = self.STRAY_BACKSLASH_PAIR
+        assert validate_tle_pair(line1, line2) == 26867
+        assert validate_tle_line(line1, 1) == line1[:-1]
+        assert len(validate_tle_line(line1, 1)) == 69
+        assert tle_line_defects(line1) == (STRAY_BACKSLASH,)
+        assert tle_line_defects(line2) == ()
+
+    def test_a_backslash_in_place_of_the_checksum_leaves_an_unverified_line(self):
+        line1, line2 = self.BACKSLASH_FOR_CHECKSUM_PAIR
+        assert validate_tle_pair(line1, line2) == 25544
+        assert validate_tle_line(line1, 1) == line1[:-1]
+        assert len(validate_tle_line(line1, 1)) == 68
+        assert tle_line_defects(line1) == (STRAY_BACKSLASH, MISSING_CHECKSUM)
+        assert tle_line_defects(line2) == (MISSING_CHECKSUM,)
+
+    def test_lines_without_checksums_parse_to_their_own_fields(self):
+        # The fields are all in their columns, so the elements come out right:
+        # these are the values printed in the lines themselves.
+        elements = parse_tle_elements(*self.NO_CHECKSUM_PAIR)
+        assert elements["INCLINATION"] == 51.6421
+        assert elements["RA_OF_ASC_NODE"] == 205.3341
+        assert elements["ECCENTRICITY"] == 0.000532
+        assert elements["MEAN_MOTION"] == 15.54011654
+        assert elements["BSTAR"] == pytest.approx(0.25686e-4)
+        assert validate_tle_pair(*self.NO_CHECKSUM_PAIR) == 25544
+
+    @pytest.mark.parametrize("line", [1, 2])
+    def test_a_character_missing_mid_line_is_caught_without_a_checksum(self, line):
+        # Drop one character from mid-line and one from the end, and the line is
+        # 68 columns like an honest checksum-less one, with every later field
+        # shifted. Only the layout check stands between that and a wrong orbit.
+        pair = list(self.NO_CHECKSUM_PAIR)
+        shifted = pair[line - 1][:20] + pair[line - 1][21:] + "0"
+        pair[line - 1] = shifted
+        assert len(shifted) == 68
+        with pytest.raises(ValueError, match="a character is missing"):
+            validate_tle_pair(*pair)
+
+    def test_a_clean_line_less_its_checksum_digit_is_accepted(self):
+        line1, line2 = make_tle(25544, _EPOCH)
+        assert validate_tle_pair(line1[:68], line2) == 25544
+        assert tle_line_defects(line1[:68]) == (MISSING_CHECKSUM,)
+
+    def test_a_stray_backslash_does_not_excuse_a_wrong_checksum(self):
+        line1, line2 = self.STRAY_BACKSLASH_PAIR
+        wrong = line1[:68] + str((int(line1[68]) + 1) % 10) + "\\"
+        with pytest.raises(ValueError, match="checksum mismatch"):
+            validate_tle_pair(wrong, line2)
+
+    def test_only_one_trailing_backslash_is_stray(self):
+        line1, line2 = self.STRAY_BACKSLASH_PAIR
+        with pytest.raises(ValueError, match="69 characters"):
+            validate_tle_pair(line1 + "\\", line2)
+
+    def test_clean_lines_report_no_defects(self):
+        line1, line2 = make_tle(25544, _EPOCH)
+        assert tle_line_defects(line1) == tle_line_defects(line2) == ()
 
 
 # ---------------------------------------------------------------------------
