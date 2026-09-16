@@ -8,6 +8,8 @@
 - :mod:`satchecker_client.records` — what a record is, when it is valid, and
   what it means; the only place either format is named.
 - :mod:`satchecker_client.cache` — validated per-NORAD record storage.
+- :mod:`satchecker_client.catalogue` — which satellites a name search leaves in
+  play at a given epoch.
 - :mod:`satchecker_client.service` — endpoint selection, bounded concurrent
   acquisition, response validation, and resilient cache writes.
 
@@ -36,6 +38,7 @@ from .client import (
     set_client_identifier,
     user_agent,
 )
+from .catalogue import CANDIDATE_COLUMNS, in_orbit_candidates
 from .cache import (
     CacheValidationError,
     TextOrbitCache,
@@ -76,6 +79,8 @@ __all__ = [
     "search_satellites",
     "set_client_identifier",
     "user_agent",
+    "CANDIDATE_COLUMNS",
+    "in_orbit_candidates",
     "CacheValidationError",
     "TextOrbitCache",
     "read_legacy_tle_records",

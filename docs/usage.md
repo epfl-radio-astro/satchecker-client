@@ -154,6 +154,41 @@ the expected shape — no `data` rows, or a `count` that disagrees with them —
 raises {class}`~satchecker_client.client.SatCheckerResponseError` rather than
 passing for a search that matched nothing.
 
+### At a past epoch
+
+Selecting satellites by name for a date in the past means keeping the ones that
+were in orbit *then* — including satellites that have since re-entered — and
+excluding the ones launched later. The catalogue alone cannot settle that, but
+it can narrow the list before any record is fetched:
+
+```python
+found = sc.search_satellites("MOLNIYA")
+candidates = sc.in_orbit_candidates(found, epoch_jd)   # one row per NORAD ID
+
+for label, fetch in sc.nearest_endpoints_for(epoch_jd):
+    result = sc.fetch_nearest_batch(
+        candidates["NORAD_CAT_ID"].tolist(), epoch_jd, fetch_nearest=fetch, endpoint=label
+    )
+    ...  # accept only records whose epoch is close enough to epoch_jd
+```
+
+{func}`~satchecker_client.catalogue.in_orbit_candidates` combines each
+satellite's rows, keeps the earliest launch date and the latest decay date any of
+them gives, and drops only the satellites that window excludes. A satellite
+with no dates is kept.
+
+What it returns is a shortlist. Debris carries its parent's launch date, so it is
+a candidate before it existed, and an object listed under two NORAD IDs is a
+candidate twice. The record fetched near the epoch is what decides: a fragment
+has no record before it was created, and a superseded catalogue number's records
+stop long before a later epoch. So check each record's age against the epoch you
+asked for — which you must do regardless, since neither record endpoint says
+when it has nothing near that epoch.
+
+For Molniya at 2019-06-01, the search matched 170 satellites and 38 were
+candidates. 34 had a record within three days, three of them satellites that
+decayed later, between 2019 and 2024.
+
 ## Asking about a record
 
 Records are pandas rows. Rather than testing for columns yourself, ask:
