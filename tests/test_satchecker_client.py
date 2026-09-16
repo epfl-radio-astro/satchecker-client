@@ -4,8 +4,10 @@ import email.utils
 import json
 import socket
 import urllib.error
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 
 from satchecker_client import client
@@ -16,6 +18,7 @@ from satchecker_client.client import (
     SatCheckerTransportError,
     fetch_nearest_omm,
     fetch_nearest_tle,
+    search_satellites,
 )
 
 from .tle_helpers import (  # noqa: F401
@@ -317,3 +320,155 @@ class TestRequestedSatelliteFiltering:
         )
         frame = fetch_nearest_omm(25544, EPOCH)
         assert frame["NORAD_CAT_ID"].tolist() == [25544]
+
+
+def _search_row(norad_id, name, **fields):
+    """One ``search-satellites`` row as the service sends it; unset fields null."""
+    row = {
+        "satellite_id": norad_id,
+        "satellite_name": name,
+        "international_designator": None,
+        "rcs_size": None,
+        "launch_date": None,
+        "decay_date": None,
+        "object_type": None,
+    }
+    row.update(fields)
+    return row
+
+
+def _search_payload(rows, **overrides):
+    body = {
+        "count": len(rows),
+        "data": rows,
+        "source": "IAU CPS SatChecker",
+        "version": "1.8.0",
+    }
+    body.update(overrides)
+    return json.dumps(body).encode()
+
+
+class TestSearchSatellites:
+    def test_rows_are_normalised_and_kept_as_served(self, monkeypatch):
+        # Shapes observed in the live catalogue: one satellite under two names
+        # whose rows carry different fields, and one object under two NORAD IDs.
+        rows = [
+            _search_row(
+                64236, "STARLINK-11691", international_designator="2025-119D",
+                launch_date="2025-06-03", object_type="PAYLOAD", rcs_size="LARGE",
+            ),
+            _search_row(
+                64236, "STARLINK-11691 [DTC]", international_designator="2025-119D",
+            ),
+            _search_row(
+                47406, "STARLINK-2133", decay_date="2026-01-30",
+            ),
+        ]
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: _search_payload(rows))
+
+        frame = search_satellites("STARLINK")
+
+        assert list(frame.columns) == client.SEARCH_COLUMNS
+        assert frame["NORAD_CAT_ID"].tolist() == [64236, 64236, 47406]
+        assert frame["NORAD_CAT_ID"].dtype.kind == "i"
+        assert frame.loc[0, "LAUNCH_DATE"] == "2025-06-03"
+        # A missing value is None under pandas 2 and NaN under pandas 3's string
+        # dtype; either way it is null.
+        assert pd.isna(frame.loc[1, "LAUNCH_DATE"])
+        assert frame.loc[1, "OBJECT_ID"] == "2025-119D"
+        assert frame.loc[2, "DECAY_DATE"] == "2026-01-30"
+
+    def test_the_name_is_sent_as_given(self, monkeypatch):
+        # Case-sensitive on the service, so the query must not be re-cased.
+        seen = []
+
+        def capture(url, *a, **k):
+            seen.append(url)
+            return _search_payload([_search_row(14781, "OSCAR 9 (UoSAT 1)")])
+
+        monkeypatch.setattr(client, "_http_get", capture)
+        search_satellites("OSCAR 9 (UoSAT 1)")
+
+        parsed = urllib.parse.urlsplit(seen[0])
+        assert parsed.path.endswith("/search-satellites/")
+        assert urllib.parse.parse_qs(parsed.query) == {"name": ["OSCAR 9 (UoSAT 1)"]}
+
+    def test_no_match_is_an_empty_frame_with_the_columns(self, monkeypatch):
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: _search_payload([]))
+        frame = search_satellites("ZZZNOSUCHSAT")
+        assert frame.empty
+        assert list(frame.columns) == client.SEARCH_COLUMNS
+
+    @pytest.mark.parametrize("name", ["", "   ", "\t"])
+    def test_an_empty_name_is_refused_before_any_request(self, monkeypatch, name):
+        def forbidden(*a, **k):
+            raise AssertionError("an empty name must not reach the service")
+
+        monkeypatch.setattr(client, "_http_get", forbidden)
+        with pytest.raises(ValueError, match="entire catalogue"):
+            search_satellites(name)
+
+    @pytest.mark.parametrize("name", [None, 25544, b"NAVSTAR"])
+    def test_a_non_string_name_is_a_type_error(self, name):
+        with pytest.raises(TypeError):
+            search_satellites(name)
+
+    @pytest.mark.parametrize(
+        "payload, message",
+        [
+            # An error envelope served with HTTP 200 is not "no matches", even
+            # when it carries an empty data list.
+            (json.dumps({"error": "unavailable"}).encode(), "reports an error"),
+            (json.dumps({"error": "unavailable", "data": [], "count": 0}).encode(), "reports an error"),
+            (json.dumps({"count": 0}).encode(), "no data field"),
+            (json.dumps({"data": []}).encode(), "no integer count"),
+            (json.dumps({"count": None, "data": []}).encode(), "no integer count"),
+            (json.dumps({"count": 0, "data": {}}).encode(), "unexpected search-satellites rows"),
+            (json.dumps({"count": 1, "data": [1]}).encode(), "unexpected search-satellites rows"),
+            (b"[]", "a list of 0 objects"),
+            (b"[1]", "unexpected response shape"),
+            (
+                json.dumps([json.loads(_search_payload([])), json.loads(_search_payload([]))]).encode(),
+                "a list of 2 objects",
+            ),
+            (_search_payload([_search_row(1, "A")], count=5), "reports 5 matches but carries 1"),
+            (_search_payload([_search_row(1, "A")], count="1"), "no integer count"),
+            # True == 1 in Python, so a boolean count must be refused explicitly.
+            (_search_payload([_search_row(1, "A")], count=True), "no integer count"),
+        ],
+    )
+    def test_malformed_responses_raise(self, monkeypatch, payload, message):
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: payload)
+        with pytest.raises(SatCheckerResponseError, match=message):
+            search_satellites("A")
+
+    @pytest.mark.parametrize(
+        "row, message",
+        [
+            (_search_row(None, "A"), "missing satellite IDs"),
+            (_search_row(1.5, "A"), "non-integer"),
+            (_search_row(1, None), "missing satellite names"),
+            (_search_row(1, "A", launch_date="2024/10/20"), "unreadable LAUNCH_DATE"),
+            # Dates are compared as strings downstream, so padding matters.
+            (_search_row(1, "A", launch_date="2024-10-1"), "unreadable LAUNCH_DATE"),
+            (_search_row(1, "A", decay_date="2024-1-20"), "unreadable DECAY_DATE"),
+            (_search_row(1, "A", decay_date=20261020), "unreadable DECAY_DATE"),
+        ],
+    )
+    def test_malformed_rows_raise(self, monkeypatch, row, message):
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: _search_payload([row]))
+        with pytest.raises(SatCheckerResponseError, match=message):
+            search_satellites("A")
+
+    def test_a_single_envelope_wrapped_in_a_list_is_accepted(self, monkeypatch):
+        payload = json.dumps([json.loads(_search_payload([_search_row(1, "A")]))]).encode()
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: payload)
+        assert search_satellites("A")["NORAD_CAT_ID"].tolist() == [1]
+
+    def test_missing_optional_fields_are_filled_not_fatal(self, monkeypatch):
+        rows = [{"satellite_id": 25544, "satellite_name": "ISS (ZARYA)"}]
+        monkeypatch.setattr(client, "_http_get", lambda *a, **k: _search_payload(rows))
+        frame = search_satellites("ISS")
+        assert list(frame.columns) == client.SEARCH_COLUMNS
+        assert pd.isna(frame.loc[0, "DECAY_DATE"])
+

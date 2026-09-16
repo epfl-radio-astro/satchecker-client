@@ -114,6 +114,83 @@ including the IDs never sent after an outage), and `outage` (set when the
 service itself was the problem — the signal that retrying against the *other*
 endpoint would be asking a down service a different question).
 
+## Finding satellites by name
+
+{func}`~satchecker_client.client.search_satellites` turns a name into catalogue
+entries, for callers that select satellites by name rather than by number:
+
+```python
+found = sc.search_satellites("NAVSTAR")
+found[["NORAD_CAT_ID", "OBJECT_NAME", "LAUNCH_DATE", "DECAY_DATE"]]
+```
+
+It returns one row per catalogue entry the service matched, with
+{data}`~satchecker_client.client.SEARCH_COLUMNS`, and an empty frame when nothing
+matches. It is one request however many satellites match; it does not fetch any
+orbital records.
+
+What a match means is SatChecker's, and several parts of it are easy to get
+wrong:
+
+- The match is a **case-sensitive substring**. Catalogue names are almost all
+  upper case, so `"navstar"` finds nothing and `"NAVSTAR"` finds the 80
+  entries named `NAVSTAR …`. A few names are mixed case, such as `DMSat-1`, so upper-casing a
+  query is a good default rather than a complete one.
+- `%` and `_` are **SQL wildcards**, and cannot be escaped.
+- **Rows are not satellites.** A satellite known by several names has a row for
+  each, and those rows may not carry the same fields — one can have a launch
+  date its alias lacks. Combine a satellite's rows before deciding anything
+  about it.
+- **NORAD IDs are not objects either.** The same object can be listed under two
+  catalogue numbers, with the same name and `OBJECT_ID`, and nothing in the
+  response says which one is current. Selecting both means counting it twice.
+- **Decayed objects are included**, with a `DECAY_DATE`. Whether a satellite
+  that has since re-entered belongs in a result depends on the epoch you are
+  modelling, which is the caller's to judge.
+
+An empty name raises `ValueError` before any request is made: SatChecker reads
+it as no filter and would return the whole catalogue. A reply that does not have
+the expected shape — no `data` rows, or a `count` that disagrees with them —
+raises {class}`~satchecker_client.client.SatCheckerResponseError` rather than
+passing for a search that matched nothing.
+
+### At a past epoch
+
+Selecting satellites by name for a date in the past means keeping the ones that
+were in orbit *then* — including satellites that have since re-entered — and
+excluding the ones launched later. The catalogue alone cannot settle that, but
+it can narrow the list before any record is fetched:
+
+```python
+found = sc.search_satellites("MOLNIYA")
+candidates = sc.in_orbit_candidates(found, epoch_jd)   # one row per NORAD ID
+
+for label, fetch in sc.nearest_endpoints_for(epoch_jd):
+    result = sc.fetch_nearest_batch(
+        candidates["NORAD_CAT_ID"].tolist(), epoch_jd, fetch_nearest=fetch, endpoint=label
+    )
+    ...  # accept only records whose epoch is close enough to epoch_jd
+```
+
+{func}`~satchecker_client.catalogue.in_orbit_candidates` combines each
+satellite's rows, keeps the earliest launch date and the latest decay date any of
+them gives, and drops only the satellites that window excludes. A satellite
+with no dates is kept.
+
+What it returns is a shortlist. Debris carries its parent's launch date, so it is
+a candidate before it existed, and an object listed under two NORAD IDs is a
+candidate twice. Checking each record's age against the epoch you asked for —
+which you must do regardless, since neither record endpoint says when it has
+nothing near that epoch — removes much of that: debris asked about long before
+it was created, and a superseded catalogue number whose records stopped months
+earlier. It does not remove all of it. Debris first tracked within your age limit
+after the epoch still passes, and so can both of an object's numbers while a
+reassignment is recent; what to do about those is yours to decide.
+
+For Molniya at 2019-06-01, the search returned 170 catalogue entries and 38 were
+candidates. 34 had a record within three days, three of them satellites that
+decayed later, between 2019 and 2024.
+
 ## Asking about a record
 
 Records are pandas rows. Rather than testing for columns yourself, ask:
@@ -146,6 +223,36 @@ A **TLE** additionally gets two checks with no OMM equivalent:
 - **The embedded identity cross-check.** Both lines carry the satellite
   identifier and must agree with each other and with the row, so a record filed
   under the wrong satellite is caught.
+
+**SatChecker's historical TLE archive is an exception.** Its records backfilled
+from Space-Track in May 2025 carry one of two defects. In a sample of three
+long-lived satellites on two dates a year, all six records were damaged in 2003
+and in every year from 2005 to 2016, and some in 2001–2002, 2004 and 2017–2018;
+that is a sample, not a survey of the archive.
+
+- **A stray backslash after line 1's last column.** It is always removed, and
+  the checksum is then verified as usual, so such a record is as trustworthy as
+  a clean one.
+- **No checksum digit** on one or both lines. Validation rejects such a line
+  unless the caller passes `allow_missing_checksum=True`, and then accepts it
+  only if every separator and decimal-point column is where the format puts it.
+  That catches a character dropped from most of the line, but not from line 2's
+  mean motion digits or revolution number, where a deletion moves no anchored
+  column: a line missing a mean motion digit validates, with a different mean
+  motion. Nothing verifies such a line's digits.
+
+Lines without checksums are rejected everywhere unless the caller asks,
+{func}`~satchecker_client.service.fetch_nearest_batch` included. An application
+that needs the dates this archive covers can pass `allow_missing_checksum=True`
+to the batch; it should then decide what that means for the records it keeps,
+since {func}`~satchecker_client.records.validate_record` will reject the same
+lines again when it reads a saved copy, unless it too is asked not to. The batch
+returns records with their lines in standard form and logs one warning per batch
+naming the satellites, separately for the repaired and the unverifiable. Records
+with no checksum digit are never written to the cache, which other applications
+and older versions of this package also read, so they are fetched again on each
+run. A direct call to {func}`~satchecker_client.client.fetch_nearest_tle`
+reports the lines as the service sent them.
 
 **An OMM record has no checksum**, and there is no way to add one. Its `EPOCH`
 must parse as ISO 8601 and fall inside an absolute plausibility window (not
@@ -185,6 +292,73 @@ plain pandas-oriented JSON files — the shape of a Space-Track `gp` export —
 for callers migrating from files they already have. Floats in those files read
 back as the exact doubles that were written; its reference entry notes the two
 cases where pandas still differs.
+
+### Search results
+
+The same cache keeps catalogue searches, one `search-<key>.json` file per query
+in the same directory as the orbit files, so a name-selected run can resolve its
+satellites without the network once both are cached:
+
+```python
+from datetime import datetime, timedelta, timezone
+
+name = "NAVSTAR"
+snapshot = cache.get_search(name)
+too_old = snapshot is None or datetime.now(timezone.utc) - snapshot.fetched_at > timedelta(days=7)
+if too_old:
+    try:
+        found = sc.search_satellites(name)
+        sc.store_or_warn(
+            lambda: cache.store_search(name, found), cache.search_path(name), "search result"
+        )
+    except sc.SatCheckerTransportError as error:
+        if snapshot is None:
+            raise
+        print(
+            f"warning: could not refresh the search for {name!r} ({error}); using "
+            f"the result fetched {snapshot.fetched_at:%Y-%m-%d %H:%M} UTC, "
+            f"{len(snapshot.found)} rows"
+        )
+        found = snapshot.found
+else:
+    found = snapshot.found
+```
+
+Say so whenever you fall back like this. An out-of-date result can include a
+satellite that has since been ruled out or miss one added since, and a cached
+empty result selects nothing at all; the warning is how whoever runs it finds
+out.
+
+What makes this different from the orbit records shapes how the files behave:
+
+- **The key is the name exactly as sent.** The service matches case-sensitively
+  and reads `%` and `_` as wildcards, so `NAVSTAR` and `navstar` are cached
+  separately, as they are searched separately.
+- **A file holds one complete result, replaced on every store.** Orbit records
+  never change once published, so they merge; a search result is a snapshot of
+  a catalogue that does change, and rows from an older search say nothing about
+  a newer one.
+- **A search that matched nothing is cached**, as an empty `found`, and is not
+  a miss.
+- **Nothing judges age.** {meth}`~satchecker_client.cache.TextOrbitCache.get_search`
+  returns `fetched_at` and leaves the decision to you. Staleness errs both ways:
+  an old result can lack a decay date added since, keeping a satellite that
+  should now be excluded, and it can lack a satellite added to the catalogue, or
+  given a matching alias, since it was fetched. For a run you need to reproduce
+  exactly, keep the NORAD IDs it actually used rather than relying on a cached
+  search.
+
+The service is part of each search's key: the cache reads
+{data}`~satchecker_client.client.BASE_URL` as the client does, so results from
+a client pointed at another service are cached apart from the default service's.
+Each cache method reads it once, but nothing ties a result to the service it
+came from. **Point the client at another service before a lookup, fetch, store
+and fallback sequence, not during one**: a result fetched from one service and
+stored after the address changes is filed, and served back, as the other's.
+
+Search files use their own schema version and are only ever opened by name, so
+versions of this package that predate them, reading the same directory, never
+see them.
 
 ## What stays with the caller
 

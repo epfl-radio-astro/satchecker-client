@@ -1,12 +1,15 @@
 """Client for the IAU CPS SatChecker orbital-record service, split by responsibility.
 
 - :mod:`satchecker_client.client` — HTTP transport and response normalisation
-  for both nearest-record endpoints; standard library plus pandas, nothing else.
+  for both nearest-record endpoints and the catalogue name search; standard
+  library plus pandas, nothing else.
 - :mod:`satchecker_client.tle_parse` — TLE line parsing, and the element range
   checks both record kinds share.
 - :mod:`satchecker_client.records` — what a record is, when it is valid, and
   what it means; the only place either format is named.
 - :mod:`satchecker_client.cache` — validated per-NORAD record storage.
+- :mod:`satchecker_client.catalogue` — which satellites a name search leaves in
+  play at a given epoch.
 - :mod:`satchecker_client.service` — endpoint selection, bounded concurrent
   acquisition, response validation, and resilient cache writes.
 
@@ -23,6 +26,7 @@ from .client import (
     BASE_URL,
     HANDOVER_JD,
     OMM_COLUMNS,
+    SEARCH_COLUMNS,
     TLE_COLUMNS,
     SatCheckerError,
     SatCheckerRateLimitError,
@@ -30,11 +34,14 @@ from .client import (
     SatCheckerTransportError,
     fetch_nearest_omm,
     fetch_nearest_tle,
+    search_satellites,
     set_client_identifier,
     user_agent,
 )
+from .catalogue import CANDIDATE_COLUMNS, in_orbit_candidates
 from .cache import (
     CacheValidationError,
+    SearchSnapshot,
     TextOrbitCache,
     read_legacy_tle_records,
 )
@@ -61,6 +68,7 @@ __all__ = [
     "BASE_URL",
     "HANDOVER_JD",
     "OMM_COLUMNS",
+    "SEARCH_COLUMNS",
     "TLE_COLUMNS",
     "fetch_nearest_omm",
     "nearest_endpoints_for",
@@ -69,9 +77,13 @@ __all__ = [
     "SatCheckerResponseError",
     "SatCheckerTransportError",
     "fetch_nearest_tle",
+    "search_satellites",
     "set_client_identifier",
     "user_agent",
+    "CANDIDATE_COLUMNS",
+    "in_orbit_candidates",
     "CacheValidationError",
+    "SearchSnapshot",
     "TextOrbitCache",
     "read_legacy_tle_records",
     "KIND_OMM",

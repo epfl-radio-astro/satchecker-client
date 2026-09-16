@@ -280,7 +280,7 @@ def norad_id_of(record, context: str = "record") -> int:
     return value
 
 
-def validate_record(record) -> int:
+def validate_record(record, *, allow_missing_checksum: bool = False) -> int:
     """Fully validate *record*; return the NORAD catalogue ID it belongs to.
 
     For a TLE the returned ID is decoded from the *lines*, so a caller comparing
@@ -292,13 +292,15 @@ def validate_record(record) -> int:
     for exactly the kind that can support it.
 
     Raises ``ValueError`` on any problem, which callers treat as "reject this
-    record and try another source".
+    record and try another source". *allow_missing_checksum* applies to TLE
+    lines; see :func:`~satchecker_client.tle_parse.validate_tle_line`.
     """
     kind = record_kind(record)
     if kind == KIND_TLE:
         return validate_tle_pair(
             _get(record, "TLE_LINE1", "TLE record"),
             _get(record, "TLE_LINE2", "TLE record"),
+            allow_missing_checksum=allow_missing_checksum,
         )
     norad_id = norad_id_of(record, "OMM record")
     record_elements(record)  # runs validate_elements and the epoch window

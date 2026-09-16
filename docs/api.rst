@@ -16,6 +16,12 @@ Client
 .. automodule:: satchecker_client.client
     :members:
 
+Catalogue
+---------
+
+.. automodule:: satchecker_client.catalogue
+    :members:
+
 Service
 -------
 
