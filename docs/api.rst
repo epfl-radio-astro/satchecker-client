@@ -13,6 +13,10 @@ Package
 Client
 ------
 
+Transport and response normalisation. Both nearest-record functions take an
+opt-in keyword-only ``strict_response``, which changes only which replies are
+refused; the default reading of a reply is unchanged.
+
 .. automodule:: satchecker_client.client
     :members:
 
@@ -31,6 +35,10 @@ Service
 Records
 -------
 
+What a record is and whether it is usable. :func:`~satchecker_client.records.validated_record`
+additionally returns the record itself, canonical and with its checksum
+provenance stated.
+
 .. automodule:: satchecker_client.records
     :members:
 
@@ -42,6 +50,12 @@ TLE parsing
 
 Cache
 -----
+
+Per-satellite record storage and catalogue-search snapshots.
+:func:`~satchecker_client.cache.read_orbit_file` reads one explicitly named
+orbit table and raises rather than returning an empty frame;
+:func:`~satchecker_client.cache.read_legacy_tle_records` scans a directory and
+skips what it cannot use.
 
 .. automodule:: satchecker_client.cache
     :members:

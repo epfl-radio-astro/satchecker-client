@@ -80,6 +80,33 @@ Failures are typed, and the distinction matters:
   back off. Carries the `Retry-After` hint as `retry_after` (seconds) when the
   service supplies one.
 
+### Telling absence from an outage
+
+Both fetch functions read a reply leniently by default, and will go on doing so:
+an error envelope served with HTTP 200, a missing data field, a null one, or
+several envelopes in one list all come back as an empty frame — the same answer
+as a satellite the archive genuinely has no record of. For a caller that uses
+whatever records it can get, that is harmless. For one where a missing satellite
+changes the result rather than shortening the list, it is the failure to avoid:
+
+```python
+frame = sc.fetch_nearest_tle(norad_id, epoch_jd, strict_response=True)
+```
+
+`strict_response=True` raises
+{class}`~satchecker_client.client.SatCheckerResponseError` for each of those
+replies instead, naming the endpoint that answered and carrying the service's
+own error text when there is one. It changes nothing else. The documented ways of
+saying "no record for this satellite" — an empty top-level list, an empty
+`orbital_data`, the legacy `tle_data` spelling — still return an empty frame, and
+a good reply normalises to the same values it does by default. Data fields are
+selected by presence rather than by truthiness, which is what makes a null one
+distinguishable from an absent one, and a reply carrying two recognised fields
+that disagree is refused rather than resolved by precedence.
+
+The option is per call and the default is deliberately untouched: a consumer
+that does not ask resolves exactly what it always did.
+
 ### Batches
 
 ```python
@@ -260,6 +287,36 @@ before 1957, not more than a year in the future); that and the range checks are
 what stand in for it, and they are weaker. This is a property of the format,
 not of the handling.
 
+### Keeping exactly what you used
+
+{func}`~satchecker_client.records.validated_record` runs those same checks and
+hands back the record rather than an ID — a copy, in canonical form, with its
+assurance stated:
+
+```python
+kept = sc.validated_record(row, allow_missing_checksum=True)
+kept["TLE_CHECKSUM_STATUS"]        # 'verified' or 'unverified_missing_checksum'
+```
+
+It is for a caller that has to keep, save and later reread the record it
+actually propagated. The returned `dict` carries an explicit `RECORD_KIND`, a
+`NORAD_CAT_ID` checked against the identity embedded in a TLE's lines, those
+lines in standard form with a stray backslash removed, every other field as it
+came — provider metadata included — and, for a TLE,
+{data}`~satchecker_client.records.CHECKSUM_STATUS_FIELD`. A pandas row is as
+acceptable as a mapping.
+
+The status is provenance, and it never improves. A record accepted without
+checksum digits stays `unverified_missing_checksum` through a repair, a save and
+a reload, and one already marked so stays marked however well its current lines
+checksum — nothing verifies the digits its source omitted. Such a record
+therefore needs `allow_missing_checksum=True` on every pass rather than only the
+first; without that, one permissive run would launder a record into every strict
+run after it. A status this package does not recognise is refused rather than
+ignored, and a *corrupt* checksum is refused under either policy — allowing
+missing checksums must not weaken what a present one means. An OMM record gets no
+status at all: it has no checksum to make a claim about.
+
 ## Caching
 
 ```python
@@ -292,6 +349,40 @@ plain pandas-oriented JSON files — the shape of a Space-Track `gp` export —
 for callers migrating from files they already have. Floats in those files read
 back as the exact doubles that were written; its reference entry notes the two
 cases where pandas still differs.
+
+### Reading one file you named
+
+{func}`~satchecker_client.cache.read_orbit_file` reads a single orbit table, and
+refuses rather than salvages:
+
+```python
+records = sc.read_orbit_file("previous_run/used_orbits.json")
+```
+
+The directory scan above skips a file it cannot use and returns what it could
+read, which is what a directory of assorted exports needs. A file the caller
+named by hand is the opposite case: an empty frame would let an unreadable file
+fall through to another source, or to none, and the run would then look like one
+where the satellite simply had no record. So malformed content raises
+{class}`~satchecker_client.cache.CacheValidationError` naming the path, and a
+missing or unreadable file raises `OSError`. A supported but empty table is not
+an error — it says a completed run selected nothing, which a missing file does
+not say.
+
+Two shapes are tables: a top-level list of record objects, and the
+`{column: {index: value}}` orientation `DataFrame.to_json()` writes by default.
+Rows come back positionally indexed, whichever was used. Nothing else is guessed
+at — a dict of lists is refused, and so is a managed `orbit-<NORAD>.json`
+envelope, which carries a schema version and a satellite identity that only
+{meth}`~satchecker_client.cache.TextOrbitCache.get` checks.
+
+Decoding is the standard library's, so every column survives, provenance such as
+`FETCHED_AT` and `TLE_CHECKSUM_STATUS` included, and every number is the double
+that was written — subnormals and `-0.0` with it. JSON's non-standard `NaN`,
+`Infinity` and `-Infinity` literals are refused: no orbital element may be any of
+them. No acceptance policy is applied and no record is selected, so an
+unverifiable TLE line comes back byte for byte, for
+{func}`~satchecker_client.records.validated_record` to accept or refuse.
 
 ### Search results
 

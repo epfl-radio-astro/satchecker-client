@@ -44,8 +44,12 @@ from .cache import (
     SearchSnapshot,
     TextOrbitCache,
     read_legacy_tle_records,
+    read_orbit_file,
 )
 from .records import (
+    CHECKSUM_STATUS_FIELD,
+    CHECKSUM_UNVERIFIED_MISSING,
+    CHECKSUM_VERIFIED,
     KIND_OMM,
     KIND_TLE,
     KIND_FIELD,
@@ -54,6 +58,7 @@ from .records import (
     record_epoch_jd,
     record_kind,
     validate_record,
+    validated_record,
 )
 from .service import (
     MAX_WORKERS,
@@ -86,6 +91,10 @@ __all__ = [
     "SearchSnapshot",
     "TextOrbitCache",
     "read_legacy_tle_records",
+    "read_orbit_file",
+    "CHECKSUM_STATUS_FIELD",
+    "CHECKSUM_UNVERIFIED_MISSING",
+    "CHECKSUM_VERIFIED",
     "KIND_OMM",
     "KIND_TLE",
     "KIND_FIELD",
@@ -94,6 +103,7 @@ __all__ = [
     "record_epoch_jd",
     "record_kind",
     "validate_record",
+    "validated_record",
     "MAX_WORKERS",
     "NearestBatchResult",
     "fetch_nearest_batch",
