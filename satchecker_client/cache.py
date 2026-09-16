@@ -176,16 +176,10 @@ def _checked_search_name(name) -> str:
     return name
 
 
-def _search_key(name: str) -> str:
-    """Digest of everything that decides a search's result: service, endpoint, name.
-
-    The service is read from :data:`client.BASE_URL` at call time, as
-    :func:`~satchecker_client.client.search_satellites` reads it, so a caller
-    pointing the client at another service also caches that service's results
-    under their own keys rather than over the default service's.
-    """
+def _search_key(name: str, base_url: str) -> str:
+    """Digest of everything that decides a search's result: service, endpoint, name."""
     material = json.dumps(
-        {"base_url": client.BASE_URL, "endpoint": _SEARCH_ENDPOINT, "name": name},
+        {"base_url": base_url, "endpoint": _SEARCH_ENDPOINT, "name": name},
         sort_keys=True,
         ensure_ascii=False,
     )
@@ -263,7 +257,7 @@ def _search_records_for_json(frame: pd.DataFrame) -> list[dict]:
     ]
 
 
-def _snapshot_from_envelope(envelope, name: str) -> SearchSnapshot:
+def _snapshot_from_envelope(envelope, name: str, base_url: str) -> SearchSnapshot:
     """Check a search file's envelope against the search asked for; build the snapshot."""
     if not isinstance(envelope, dict):
         raise CacheValidationError("search cache envelope is not an object")
@@ -276,10 +270,10 @@ def _snapshot_from_envelope(envelope, name: str) -> SearchSnapshot:
         raise CacheValidationError(
             f"search cache file is for endpoint {envelope.get('endpoint')!r}"
         )
-    if envelope.get("base_url") != client.BASE_URL:
+    if envelope.get("base_url") != base_url:
         raise CacheValidationError(
             f"search cache file is for service {envelope.get('base_url')!r}, "
-            f"not {client.BASE_URL!r}"
+            f"not {base_url!r}"
         )
     if envelope.get("name") != name:
         raise CacheValidationError(
@@ -345,12 +339,14 @@ def _cacheable(records: pd.DataFrame, norad_id: int) -> pd.DataFrame:
             continue
         try:
             # The row's own ID as well as the one in its lines: validate_record
-            # reads only the lines, and a row filed under a missing, null,
-            # fractional or different ID is one _validated_records must see and
-            # reject. A missing column raises KeyError, None raises TypeError, and
-            # NaN or a fraction compares unequal.
-            if float(row["NORAD_CAT_ID"]) != int(norad_id):
-                raise ValueError("record is filed under another satellite")
+            # reads only the lines. Checked by _validated_ids itself, the rule
+            # _validated_records applies afterwards, so no row ID it would reject
+            # — missing, null, non-numeric, fractional, non-positive or another
+            # satellite's — can be skipped here instead.
+            _validated_ids(
+                pd.DataFrame({"NORAD_CAT_ID": [row["NORAD_CAT_ID"]]}, dtype=object),
+                norad_id,
+            )
             if validate_record(row, allow_missing_checksum=True) != int(norad_id):
                 raise ValueError("record belongs to another satellite")
             standard = (
@@ -548,8 +544,17 @@ class TextOrbitCache:
         case-sensitively and reads ``%`` and ``_`` as wildcards: ``NAVSTAR`` and
         ``navstar`` are different searches with different results. The key is a
         digest because a name can hold characters a filename cannot.
+
+        The service is part of the key too, read from ``client.BASE_URL`` as
+        :func:`~satchecker_client.client.search_satellites` reads it, so results
+        from a client pointed at another service are cached apart. Each method
+        reads it once; changing it partway through a lookup, fetch and store is
+        not supported (see the usage guide).
         """
-        return self.cache_dir / f"search-{_search_key(_checked_search_name(name))}.json"
+        return self._search_file(_checked_search_name(name), client.BASE_URL)
+
+    def _search_file(self, name: str, base_url: str) -> Path:
+        return self.cache_dir / f"search-{_search_key(name, base_url)}.json"
 
     def get_search(
         self, name: str, log: Callable[[str], None] = print
@@ -568,13 +573,14 @@ class TextOrbitCache:
         ``fetched_at`` is there for the caller's policy.
         """
         name = _checked_search_name(name)
-        path = self.search_path(name)
+        base_url = client.BASE_URL  # once, so the file read and the check agree
+        path = self._search_file(name, base_url)
         if not path.exists():
             return None
         try:
             with open(path) as handle:
                 envelope = json.load(handle)
-            return _snapshot_from_envelope(envelope, name)
+            return _snapshot_from_envelope(envelope, name, base_url)
         except (OSError, ValueError, TypeError) as error:
             log(
                 f"  warning: cached search file {path} is unusable ({error}); "
@@ -595,6 +601,7 @@ class TextOrbitCache:
         :class:`CacheValidationError` and leaves any existing file untouched.
         """
         name = _checked_search_name(name)
+        base_url = client.BASE_URL  # once, so the file written and its label agree
         frame = _validated_search_frame(found)
         if fetched_at is None:
             fetched_at = datetime.now(timezone.utc)
@@ -604,13 +611,13 @@ class TextOrbitCache:
         envelope = {
             "schema_version": SEARCH_SCHEMA_VERSION,
             "endpoint": _SEARCH_ENDPOINT,
-            "base_url": client.BASE_URL,
+            "base_url": base_url,
             "name": name,
             "fetched_at": fetched_at.astimezone(timezone.utc).strftime(_FETCHED_AT_FORMAT),
             "count": len(records),
             "records": records,
         }
-        path = self.search_path(name)
+        path = self._search_file(name, base_url)
         with _exclusive_lock(path):
             _atomic_write_json(path, envelope)
 

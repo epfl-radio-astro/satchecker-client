@@ -303,6 +303,17 @@ def test_a_tilde_cache_path_is_expanded(tmp_path, monkeypatch):
     assert (tmp_path / "orbits" / "orbit-25544.json").exists()
 
 
+@pytest.mark.parametrize("row_id", ["25544", "25544.0", 25544.0])
+def test_a_valid_row_id_in_another_form_still_leaves_the_record_uncached(tmp_path, row_id):
+    # Not an error: the ID is valid, and the record is left out only because
+    # nothing verifies its lines.
+    cache = TextOrbitCache(tmp_path)
+    frame = _with_lines(25544, NO_CHECKSUM_PAIR)
+    frame["NORAD_CAT_ID"] = pd.Series([row_id], dtype=object)
+    cache.store(25544, frame)
+    assert not cache.path(25544).exists()
+
+
 def test_records_without_checksums_are_never_written_to_the_cache(tmp_path):
     # The file is shared with other applications and with 0.1.x, which rejects a
     # whole file over one line it cannot validate and then overwrites it.
@@ -351,6 +362,11 @@ def _with_lines(norad_id, pair):
     return frame
 
 
+def _renumbered(pair, norad_id):
+    """Checksum-less lines rewritten to carry *norad_id*; no checksum to recompute."""
+    return tuple(line[:2] + f"{norad_id:05d}" + line[7:] for line in pair)
+
+
 def _shifted_no_checksum_pair():
     # 68 columns like an honest checksum-less line, but a character is missing
     # mid-line: invalid even when missing checksums are allowed.
@@ -381,6 +397,16 @@ def _wrong_checksum_backslash_pair():
         (lambda: _with_lines(25544, NO_CHECKSUM_PAIR).drop(columns=["NORAD_CAT_ID"]), 25544),
         (lambda: _with_lines(25544, NO_CHECKSUM_PAIR).assign(NORAD_CAT_ID=25544.5), 25544),
         (lambda: _with_lines(25544, STRAY_BACKSLASH_PAIR), 26867),
+        # Row IDs the store's own ID rules reject, however the lines read.
+        (lambda: _with_lines(25544, NO_CHECKSUM_PAIR).assign(NORAD_CAT_ID="25_544"), 25544),
+        (
+            lambda: _with_lines(25544, NO_CHECKSUM_PAIR).assign(
+                NORAD_CAT_ID="\uff12\uff15\uff15\uff14\uff14"
+            ),
+            25544,
+        ),
+        (lambda: _with_lines(0, _renumbered(NO_CHECKSUM_PAIR, 0)).assign(NORAD_CAT_ID=0), 0),
+        (lambda: _with_lines(0, _renumbered(NO_CHECKSUM_PAIR, 0)).assign(NORAD_CAT_ID=False), 0),
         # One bad row fails the whole store rather than quietly dropping out of it.
         (
             lambda: pd.concat(
@@ -402,6 +428,10 @@ def _wrong_checksum_backslash_pair():
         "checksum-less record with no row ID column",
         "checksum-less record with a fractional row ID",
         "backslash record under another row ID",
+        "checksum-less record with an underscored row ID",
+        "checksum-less record with a full-width row ID",
+        "checksum-less record with row ID 0",
+        "checksum-less record with row ID False",
         "mixed batch with one misfiled checksum-less row",
     ],
 )
@@ -530,6 +560,55 @@ class TestSearchCache:
 
         monkeypatch.setattr(client, "BASE_URL", default_url)
         assert len(cache.get_search("STARLINK").found) == 3
+
+    def test_a_store_writes_one_service_s_file_and_label_however_the_url_moves(
+        self, tmp_path, monkeypatch
+    ):
+        # Read once per call: a change partway through must not put one
+        # service's label in the other's file.
+        from satchecker_client import cache as cache_module
+        from satchecker_client import client
+
+        default_url = client.BASE_URL
+        monkeypatch.setattr(client, "BASE_URL", default_url)
+        cache = TextOrbitCache(tmp_path)
+        default_path = cache.search_path("STARLINK")
+        monkeypatch.setattr(client, "BASE_URL", "https://mirror.example.org/tools")
+        mirror_path = cache.search_path("STARLINK")
+        monkeypatch.setattr(client, "BASE_URL", default_url)
+
+        convert = cache_module._search_records_for_json
+
+        def switch_then_convert(frame):
+            client.BASE_URL = "https://mirror.example.org/tools"
+            return convert(frame)
+
+        monkeypatch.setattr(cache_module, "_search_records_for_json", switch_then_convert)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+
+        assert default_path.exists() and not mirror_path.exists()
+        assert json.loads(default_path.read_text())["base_url"] == default_url
+
+    def test_a_read_checks_the_file_against_the_service_it_opened(self, tmp_path, monkeypatch):
+        # Switch the URL after the file is opened and before it is checked, so a
+        # check that rereads it would compare against the other service.
+        from satchecker_client import cache as cache_module
+        from satchecker_client import client
+
+        monkeypatch.setattr(client, "BASE_URL", client.BASE_URL)
+        cache = TextOrbitCache(tmp_path)
+        cache.store_search("STARLINK", STARLINK, fetched_at=FETCHED)
+        load = cache_module.json.load
+
+        def load_then_switch(handle):
+            envelope = load(handle)
+            client.BASE_URL = "https://mirror.example.org/tools"
+            return envelope
+
+        monkeypatch.setattr(cache_module.json, "load", load_then_switch)
+        messages = []
+        assert cache.get_search("STARLINK", log=messages.append) is not None
+        assert messages == []
 
     def test_missing_values_are_written_as_null_not_nan(self, tmp_path):
         # pandas 3 reads a missing string back as NaN, and json.dump writes NaN as

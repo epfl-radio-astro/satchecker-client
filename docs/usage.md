@@ -347,6 +347,14 @@ What makes this different from the orbit records shapes how the files behave:
   exactly, keep the NORAD IDs it actually used rather than relying on a cached
   search.
 
+The service is part of each search's key: the cache reads
+{data}`~satchecker_client.client.BASE_URL` as the client does, so results from
+a client pointed at another service are cached apart from the default service's.
+Each cache method reads it once, but nothing ties a result to the service it
+came from. **Point the client at another service before a lookup, fetch, store
+and fallback sequence, not during one**: a result fetched from one service and
+stored after the address changes is filed, and served back, as the other's.
+
 Search files use their own schema version and are only ever opened by name, so
 versions of this package that predate them, reading the same directory, never
 see them.
