@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import pandas as pd
 import pytest
 
 from satchecker_client.records import (
@@ -27,6 +28,7 @@ from satchecker_client.records import (
 from satchecker_client._time import datetime_to_jd, jd_to_datetime
 
 from .tle_helpers import (  # noqa: F401  block_network is an autouse fixture
+    STRAY_BACKSLASH_PAIR,
     block_network,
     both_kinds,
     jd,
@@ -278,6 +280,238 @@ class TestValidateRecord:
     def test_a_datetime_epoch_object_is_accepted(self):
         record = make_omm(25544, _EPOCH, EPOCH=jd_to_datetime(_EPOCH))
         assert record_epoch_jd(record) == pytest.approx(_EPOCH, abs=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Canonical single-record validation, with provenance
+# ---------------------------------------------------------------------------
+
+def _validated_record():
+    """Import the helper under test at call time.
+
+    It does not exist yet, so importing it at module level would stop this whole
+    file from collecting. Hoist it into the ``satchecker_client.records`` import
+    at the top once the helper lands.
+    """
+    from satchecker_client.records import validated_record
+
+    return validated_record
+
+
+def _without_checksum(line: str) -> str:
+    """A valid line with its column-69 checksum digit removed.
+
+    Derived from a checksum-valid line rather than written out, so a case can
+    drop the digit from line 1 alone, line 2 alone, or both — which the
+    archive's own checksum-less pairs cannot express.
+    """
+    return line[:68]
+
+
+def _wrong_checksum(line: str) -> str:
+    """The same line carrying the next digit up, so the checksum cannot match."""
+    return line[:68] + str((int(line[68]) + 1) % 10)
+
+
+class TestValidatedRecord:
+    """One record in, one canonical copy out, with its assurance stated.
+
+    :func:`validate_record` answers "is this usable?" and hands back an ID.
+    This answers the question a consumer actually has before it propagates
+    anything: *what exactly am I about to use* — the lines in standard form, the
+    row and line identities agreeing, the metadata intact, and a checksum status
+    that records what the record's assurance is rather than what this run's
+    policy happened to allow.
+
+    The status is provenance, not a re-derivation. A record accepted once
+    without checksums must still read as unverified after a repair, a save and a
+    replay, or a permissive run would launder it into every strict run after it.
+    """
+
+    def test_validated_record_returns_canonical_copy(self):
+        validated_record = _validated_record()
+        record = make_tle_record(
+            26867,
+            jd(2010, 5, 31),
+            TLE_LINE1=STRAY_BACKSLASH_PAIR[0],
+            TLE_LINE2=STRAY_BACKSLASH_PAIR[1],
+            DATA_SOURCE="spacetrack",
+            DATE_COLLECTED="2025-05-01 00:00:00 UTC",
+        )
+        original = dict(record)
+
+        result = validated_record(record)
+
+        # The backslash is gone and the checksum still verifies the line, so the
+        # record is exactly as trustworthy as a clean one and says so.
+        assert result["TLE_LINE1"] == STRAY_BACKSLASH_PAIR[0][:-1]
+        assert result["TLE_LINE2"] == STRAY_BACKSLASH_PAIR[1]
+        assert result["TLE_CHECKSUM_STATUS"] == "verified"
+        assert result["RECORD_KIND"] == KIND_TLE
+        assert result["NORAD_CAT_ID"] == 26867
+        assert result["OBJECT_NAME"] == record["OBJECT_NAME"]
+        assert result["DATA_SOURCE"] == "spacetrack"
+        assert result["DATE_COLLECTED"] == "2025-05-01 00:00:00 UTC"
+        # A copy: the caller's mapping is not rewritten under it.
+        assert record == original
+
+    def test_validated_record_accepts_a_dataframe_row(self):
+        # Records arrive as rows of a fetched or cached frame, so a Series has to
+        # be as acceptable as a mapping, and a plain dict has to come back.
+        validated_record = _validated_record()
+        frame = pd.DataFrame([make_tle_record(25544, _EPOCH)])
+
+        result = validated_record(frame.loc[0])
+
+        assert isinstance(result, dict)
+        assert result["NORAD_CAT_ID"] == 25544
+        assert result["TLE_CHECKSUM_STATUS"] == "verified"
+
+    @pytest.mark.parametrize(
+        "drop", [(1,), (2,), (1, 2)], ids=["line 1", "line 2", "both lines"]
+    )
+    def test_validated_record_missing_checksum_requires_opt_in(self, drop):
+        validated_record = _validated_record()
+        line1, line2 = make_tle(25544, _EPOCH)
+        if 1 in drop:
+            line1 = _without_checksum(line1)
+        if 2 in drop:
+            line2 = _without_checksum(line2)
+        record = make_tle_record(25544, _EPOCH, TLE_LINE1=line1, TLE_LINE2=line2)
+
+        with pytest.raises(ValueError, match="checksum"):
+            validated_record(record)
+
+        accepted = validated_record(record, allow_missing_checksum=True)
+
+        # Accepted as they came: a recomputed digit would make an unverifiable
+        # line look verified to the next reader.
+        assert accepted["TLE_LINE1"] == line1
+        assert accepted["TLE_LINE2"] == line2
+        assert len(accepted["TLE_LINE1"]) == (68 if 1 in drop else 69)
+        assert len(accepted["TLE_LINE2"]) == (68 if 2 in drop else 69)
+        assert accepted["TLE_CHECKSUM_STATUS"] == "unverified_missing_checksum"
+
+    def test_validated_record_provenance_cannot_upgrade_unverified_input(self):
+        validated_record = _validated_record()
+
+        # Checksum-less lines that claim to be verified. The claim is not
+        # evidence; nothing in the record can verify those digits.
+        line1, line2 = (_without_checksum(line) for line in make_tle(25544, _EPOCH))
+        claimed = make_tle_record(
+            25544,
+            _EPOCH,
+            TLE_LINE1=line1,
+            TLE_LINE2=line2,
+            TLE_CHECKSUM_STATUS="verified",
+        )
+        with pytest.raises(ValueError, match="checksum"):
+            validated_record(claimed)
+        assert (
+            validated_record(claimed, allow_missing_checksum=True)["TLE_CHECKSUM_STATUS"]
+            == "unverified_missing_checksum"
+        )
+
+        # Checksum-valid lines carrying an unverified provenance. The checksums
+        # verify the lines as they stand; they say nothing about the source they
+        # were reconstructed from, so the status stands and the opt-in is still
+        # required.
+        carried = make_tle_record(
+            25544, _EPOCH, TLE_CHECKSUM_STATUS="unverified_missing_checksum"
+        )
+        with pytest.raises(ValueError, match="unverified"):
+            validated_record(carried)
+        assert (
+            validated_record(carried, allow_missing_checksum=True)["TLE_CHECKSUM_STATUS"]
+            == "unverified_missing_checksum"
+        )
+
+        # A status we do not recognise is a record we cannot classify.
+        unknown = make_tle_record(25544, _EPOCH, TLE_CHECKSUM_STATUS="trusted")
+        for allow in (False, True):
+            with pytest.raises(ValueError, match="TLE_CHECKSUM_STATUS"):
+                validated_record(unknown, allow_missing_checksum=allow)
+
+    @pytest.mark.parametrize("allow", [False, True], ids=["strict", "permissive"])
+    @pytest.mark.parametrize(
+        "overrides, message",
+        [
+            # The lines carry their own identifier, so a record filed under
+            # another satellite is catchable — and must be caught, because every
+            # caller looks the record up by the row's ID.
+            ({"NORAD_CAT_ID": 38833}, "38833"),
+            ({"NORAD_CAT_ID": 25544.5}, "25544.5"),
+            ({"NORAD_CAT_ID": 0}, "0"),
+            ({"NORAD_CAT_ID": -25544}, "-25544"),
+        ],
+        ids=["another satellite", "fractional", "zero", "negative"],
+    )
+    def test_validated_record_checks_row_and_embedded_ids(
+        self, allow, overrides, message
+    ):
+        validated_record = _validated_record()
+        record = make_tle_record(25544, _EPOCH, **overrides)
+        with pytest.raises(ValueError, match=message):
+            validated_record(record, allow_missing_checksum=allow)
+
+    @pytest.mark.parametrize("allow", [False, True], ids=["strict", "permissive"])
+    def test_validated_record_rejects_a_corrupt_checksum_under_either_policy(self, allow):
+        # Allowing *missing* checksums must not weaken what a present one means.
+        validated_record = _validated_record()
+        line1, _ = make_tle(25544, _EPOCH)
+        record = make_tle_record(25544, _EPOCH, TLE_LINE1=_wrong_checksum(line1))
+        with pytest.raises(ValueError, match="checksum"):
+            validated_record(record, allow_missing_checksum=allow)
+
+    def test_validated_record_preserves_omm_and_metadata(self):
+        validated_record = _validated_record()
+        record = make_omm(
+            25544,
+            _EPOCH,
+            ECCENTRICITY=0.0066635,
+            BSTAR=3.2e-05,
+            DATA_SOURCE="spacetrack",
+            DATE_COLLECTED="2026-08-13 03:34:14 UTC",
+            FETCHED_AT="2026-09-16T12:30:05Z",
+        )
+
+        result = validated_record(record)
+
+        assert result["RECORD_KIND"] == KIND_OMM
+        # Exact doubles, not approximately equal ones: a replayed trajectory
+        # built from a rounded element is a different trajectory.
+        assert result["ECCENTRICITY"] == 0.0066635
+        assert result["BSTAR"] == 3.2e-05
+        assert result["EPOCH"] == record["EPOCH"]
+        assert result["OBJECT_ID"] == record["OBJECT_ID"]
+        assert result["DATA_SOURCE"] == "spacetrack"
+        assert result["DATE_COLLECTED"] == "2026-08-13 03:34:14 UTC"
+        assert result["FETCHED_AT"] == "2026-09-16T12:30:05Z"
+        # OMM has no checksum and no second identifier, so there is no
+        # verification to claim. Stamping one would make the two kinds look
+        # equally checked when they are not.
+        assert "TLE_CHECKSUM_STATUS" not in result
+
+    @pytest.mark.parametrize("allow", [False, True], ids=["strict", "permissive"])
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"INCLINATION": 999.0},
+            {"MEAN_MOTION": 0.0},
+            {"BSTAR": float("nan")},
+            {"EPOCH": "1899-01-01T00:00:00"},
+            {"EPOCH": "not a date"},
+        ],
+        ids=["inclination", "mean motion", "non-finite bstar", "epoch window", "bad epoch"],
+    )
+    def test_validated_record_still_rejects_an_invalid_omm(self, allow, overrides):
+        # The checksum opt-in is about TLE lines. It must not become a general
+        # "accept anything" switch for the kind that has no checksum at all.
+        validated_record = _validated_record()
+        with pytest.raises(ValueError):
+            validated_record(
+                make_omm(25544, _EPOCH, **overrides), allow_missing_checksum=allow
+            )
 
 
 class TestNoradIdOf:
