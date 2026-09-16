@@ -257,7 +257,7 @@ def fetch_nearest_batch(
     endpoint: str = "nearest-TLE",
     max_workers: int = MAX_WORKERS,
     log: Callable[[str], None] = print,
-    allow_missing_checksum: bool = True,
+    allow_missing_checksum: bool = False,
 ) -> NearestBatchResult:
     """Fetch exact-epoch nearest records with at most *max_workers* in flight.
 
@@ -285,10 +285,13 @@ def fetch_nearest_batch(
 
     Records from SatChecker's historical TLE archive are repaired as
     :func:`validated_records` describes, and one warning at the end of the batch
-    names them. *allow_missing_checksum* defaults to true here, because that
-    archive is the known source of lines without checksum digits and rejecting
-    them leaves no TLE for much of 2001–2018; pass false to refuse records
-    nothing can verify.
+    names them. *allow_missing_checksum* defaults to false, as everywhere in this
+    package: a record whose lines carry no checksum is rejected, since nothing
+    verifies its digits. That archive is where such lines come from, and refusing
+    them can leave no TLE for dates in roughly 2001–2018, so an application that
+    needs those dates can pass true — and should then treat what it saves from
+    the result as unverified too, including when it validates those records
+    again.
     """
     ids = list(dict.fromkeys(int(value) for value in norad_ids))
     if not ids:

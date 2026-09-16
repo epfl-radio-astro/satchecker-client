@@ -241,17 +241,18 @@ that is a sample, not a survey of the archive.
   column: a line missing a mean motion digit validates, with a different mean
   motion. Nothing verifies such a line's digits.
 
-{func}`~satchecker_client.service.fetch_nearest_batch` accepts both by default,
-since this archive is where lines without checksums come from, and pass
-`allow_missing_checksum=False` to refuse them. It returns the records with their
-lines in standard form and logs one warning per batch naming the satellites,
-separately for the repaired and the unverifiable. Records with no checksum digit
-are never written to the cache, which other applications and older versions of
-this package also read, so they are fetched again on each run. Everywhere else —
-{func}`~satchecker_client.records.validate_record` on a user's own files, for
-instance — lines without checksums are rejected unless the caller asks. A direct
-call to {func}`~satchecker_client.client.fetch_nearest_tle` reports the lines as
-the service sent them.
+Lines without checksums are rejected everywhere unless the caller asks,
+{func}`~satchecker_client.service.fetch_nearest_batch` included. An application
+that needs the dates this archive covers can pass `allow_missing_checksum=True`
+to the batch; it should then decide what that means for the records it keeps,
+since {func}`~satchecker_client.records.validate_record` will reject the same
+lines again when it reads a saved copy, unless it too is asked not to. The batch
+returns records with their lines in standard form and logs one warning per batch
+naming the satellites, separately for the repaired and the unverifiable. Records
+with no checksum digit are never written to the cache, which other applications
+and older versions of this package also read, so they are fetched again on each
+run. A direct call to {func}`~satchecker_client.client.fetch_nearest_tle`
+reports the lines as the service sent them.
 
 **An OMM record has no checksum**, and there is no way to add one. Its `EPOCH`
 must parse as ISO 8601 and fall inside an absolute plausibility window (not

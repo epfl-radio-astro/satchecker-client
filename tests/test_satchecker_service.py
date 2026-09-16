@@ -365,7 +365,7 @@ def test_a_batch_repairs_every_defect_and_warns_once_for_all_of_them():
     logged = []
     result = fetch_nearest_batch(
         [11111, 26867, 25544], OBS, fetch_nearest=fetch, endpoint="nearest-TLE",
-        log=logged.append,
+        log=logged.append, allow_missing_checksum=True,
     )
 
     assert result.errors == {}
@@ -377,19 +377,25 @@ def test_a_batch_repairs_every_defect_and_warns_once_for_all_of_them():
     assert "(26867)" in warnings[0] and "(25544)" in warnings[0]
 
 
-def test_a_batch_can_refuse_records_without_checksums():
+def test_a_batch_refuses_records_without_checksums_unless_allowed():
+    # Strict by default, so an application that has not chosen to accept
+    # unverifiable lines keeps the policy it had before this handling existed.
     def fetch(norad_id, epoch_jd):
         frame = make_catalogue_df([(norad_id, OBS)])
         pair = {26867: STRAY_BACKSLASH_PAIR, 25544: NO_CHECKSUM_PAIR}[norad_id]
         frame.loc[0, ["TLE_LINE1", "TLE_LINE2"]] = list(pair)
         return frame
 
-    result = fetch_nearest_batch(
+    default = fetch_nearest_batch([26867, 25544], OBS, fetch_nearest=fetch, log=lambda _m: None)
+    assert default.records["NORAD_CAT_ID"].tolist() == [26867]
+    assert list(default.errors) == [25544]
+
+    allowed = fetch_nearest_batch(
         [26867, 25544], OBS, fetch_nearest=fetch, log=lambda _m: None,
-        allow_missing_checksum=False,
+        allow_missing_checksum=True,
     )
-    assert result.records["NORAD_CAT_ID"].tolist() == [26867]
-    assert list(result.errors) == [25544]
+    assert allowed.records["NORAD_CAT_ID"].tolist() == [26867, 25544]
+    assert allowed.errors == {}
 
 
 # ---------------------------------------------------------------------------

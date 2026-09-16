@@ -22,8 +22,7 @@ needed.
   checksums, plus the element range and finiteness checks both record kinds
   share. SatChecker's historical TLE archive has damaged lines: a stray backslash is
   repaired wherever the checksum confirms it, and lines with no checksum are
-  accepted, with a warning, only where a caller allows it — as the batch fetch
-  does by default.
+  accepted, with a warning, only where a caller allows it.
 - **Kind dispatch** — one place that knows how TLE and OMM records differ, so
   callers spanning the archive handover do not thread a format flag through
   their own code.
