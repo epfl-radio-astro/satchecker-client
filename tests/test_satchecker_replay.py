@@ -764,13 +764,20 @@ def test_replay_io_failure_is_reported(tmp_path, monkeypatch):
     assert "input/output error" in str(caught.value)
     monkeypatch.undo()
 
-    unwritable = _directory(tmp_path, "read-only")
-    unwritable.chmod(0o500)
-    try:
-        with pytest.raises((OSError, orbit_input_error())):
-            save_replay_orbits(unwritable, [A], records)
-    finally:
-        unwritable.chmod(0o700)
+    # Injected rather than a read-only directory: root may write to one of
+    # those, and the failure this asserts would simply not happen.
+    unwritable = _directory(tmp_path, "unwritable")
+    real_write_text = Path.write_text
+
+    def failing_write(self, *args, **kwargs):
+        if str(self).startswith(str(unwritable)):
+            raise OSError("read-only file system")
+        return real_write_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", failing_write)
+    with pytest.raises((OSError, orbit_input_error())) as caught:
+        save_replay_orbits(unwritable, [A], records)
+    assert "read-only file system" in str(caught.value)
     assert not list(unwritable.iterdir())
 
 
