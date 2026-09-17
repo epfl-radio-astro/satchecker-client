@@ -499,3 +499,49 @@ class TestEndpointSelection:
 
     def test_the_handover_matches_satcheckers_changelog(self):
         assert jd_to_datetime(client.HANDOVER_JD).date().isoformat() == "2026-07-12"
+
+
+# ---------------------------------------------------------------------------
+# Characterisation: what the batch layer must keep doing unchanged
+# ---------------------------------------------------------------------------
+
+def test_fetch_nearest_batch_stamps_no_checksum_status_column():
+    """The batch reports records; it makes no claim about their provenance.
+
+    Stamping a status here would put a new column into every consumer's frames
+    — and into the shared cache through their existing store calls — for
+    callers that never asked for one. The claim is ``validated_record``'s to
+    make, one record at a time.
+    """
+    result = fetch_nearest_batch(
+        [25544],
+        OBS,
+        fetch_nearest=lambda nid, epoch: make_catalogue_df([(nid, epoch)]),
+        log=lambda _m: None,
+    )
+    assert "TLE_CHECKSUM_STATUS" not in result.records.columns
+    assert list(result.records.columns) == list(make_catalogue_df([(25544, OBS)]).columns)
+
+
+def test_fetch_nearest_batch_defaults_are_the_tle_endpoint_and_strict_checksums():
+    """The defaults an existing caller relies on by passing nothing."""
+    import inspect
+
+    defaults = inspect.signature(fetch_nearest_batch).parameters
+    assert defaults["fetch_nearest"].default is client.fetch_nearest_tle
+    assert defaults["endpoint"].default == "nearest-TLE"
+    assert defaults["max_workers"].default == service.MAX_WORKERS
+    assert defaults["allow_missing_checksum"].default is False
+
+
+def test_store_or_warn_lets_a_non_oserror_escape(tmp_path):
+    """It catches the I/O failure it exists for, and nothing else.
+
+    Swallowing a ``ValueError`` here would turn a record the cache refused into
+    a silent warning, and the run would continue believing it had stored it.
+    """
+    def invalid_write():
+        raise ValueError("record belongs to another satellite")
+
+    with pytest.raises(ValueError):
+        store_or_warn(invalid_write, tmp_path, "records", log=lambda _m: None)

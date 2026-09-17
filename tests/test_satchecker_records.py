@@ -552,3 +552,35 @@ class TestNoradIdOf:
     def test_plain_string_and_integral_float_forms_still_convert(self):
         assert norad_id_of(self._record("25544")) == 25544
         assert norad_id_of(self._record(25544.0)) == 25544
+
+
+class TestValidateRecordStaysWhatItIs:
+    """Characterisation: the resolver layer must not change what this answers.
+
+    ``validate_record`` answers "is this usable?" and hands back an ID. It is
+    not ``validated_record``, and the new layer's stricter reading of
+    provenance must not be pushed down into it — both consumers call it
+    directly today, on records that have already been through a permissive run.
+    """
+
+    def test_it_returns_an_integer_not_a_record(self):
+        record = make_tle_record(25544, _EPOCH)
+        result = validate_record(record)
+        assert isinstance(result, int) and not isinstance(result, bool)
+        assert result == 25544
+
+    def test_a_tles_id_comes_from_its_lines_for_the_caller_to_compare(self):
+        # The row says one satellite and the lines say another; this reports
+        # what the lines say and leaves the comparison to the caller.
+        record = make_tle_record(25544, _EPOCH, NORAD_CAT_ID=99999)
+        assert validate_record(record) == 25544
+
+    @pytest.mark.parametrize(
+        "status", ["unverified_missing_checksum", "verified", "who-knows"]
+    )
+    def test_it_does_not_read_the_checksum_status_field(self, status):
+        # Checksum-valid lines carrying provenance from an earlier run.
+        # ``validated_record`` refuses the unverified one under a strict policy
+        # and refuses the unrecognised one under any; this does neither.
+        record = make_tle_record(25544, _EPOCH, TLE_CHECKSUM_STATUS=status)
+        assert validate_record(record) == 25544
