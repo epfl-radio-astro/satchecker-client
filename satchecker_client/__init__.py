@@ -12,11 +12,23 @@
   play at a given epoch.
 - :mod:`satchecker_client.service` — endpoint selection, bounded concurrent
   acquisition, response validation, and resilient cache writes.
+- :mod:`satchecker_client.resolve` — optional: which record an observation gets,
+  under rules the caller states.
+- :mod:`satchecker_client.replay` — optional: freezing a run's orbital inputs,
+  and reading them back exactly.
 
 What this package deliberately does not decide: which record a given observation
 should use, how old a record may be before it is refused, or how a local archive
 ranks against the service. Those are application policy, and they live in the
-caller. TABASCAL, the original consumer, keeps them in its ``tabascal.orbit``.
+caller.
+
+:func:`~satchecker_client.resolve.resolve_orbits` does not change that. It is the
+machinery both consumers wrote separately — source precedence per satellite,
+nearest-epoch selection, cache reuse against a hard ceiling, endpoint fallback,
+and telling an absent satellite from a failed request — with every rule required
+as an explicit argument and none of them defaulted. Which values to pass, and
+whether an incomplete result is fatal, stay with the caller. Importing it reads
+nothing, contacts nothing and constructs no cache.
 
 The names most callers need are re-exported here.
 """
@@ -60,6 +72,23 @@ from .records import (
     record_kind,
     validate_record,
     validated_record,
+)
+from .replay import (
+    REPLAY_IDS_FILE,
+    REPLAY_RECORDS_FILE,
+    load_replay_orbits,
+    save_orbits_for_reuse,
+    save_replay_orbits,
+)
+from .resolve import (
+    EndpointAttempt,
+    OrbitInputError,
+    OrbitResolution,
+    RejectedOrbit,
+    ResolutionEvent,
+    ResolvedOrbit,
+    read_extra_orbit_dir,
+    resolve_orbits,
 )
 from .service import (
     MAX_WORKERS,
@@ -111,4 +140,17 @@ __all__ = [
     "NearestBatchResult",
     "fetch_nearest_batch",
     "store_or_warn",
+    "EndpointAttempt",
+    "OrbitInputError",
+    "OrbitResolution",
+    "RejectedOrbit",
+    "ResolutionEvent",
+    "ResolvedOrbit",
+    "read_extra_orbit_dir",
+    "resolve_orbits",
+    "REPLAY_IDS_FILE",
+    "REPLAY_RECORDS_FILE",
+    "load_replay_orbits",
+    "save_orbits_for_reuse",
+    "save_replay_orbits",
 ]

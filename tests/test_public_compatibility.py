@@ -358,7 +358,11 @@ def test_importing_resolver_has_no_side_effects(monkeypatch):
     monkeypatch.setattr(client, "set_client_identifier", forbid("set_client_identifier"))
 
     for name in ("satchecker_client.resolve", "satchecker_client.replay"):
-        sys.modules.pop(name, None)
+        # delitem rather than pop: pytest puts the module back when the test
+        # ends. A second module object left under one name would have the
+        # package re-exporting the first one's classes while ``import`` hands
+        # out the second's, which the export guard below compares by identity.
+        monkeypatch.delitem(sys.modules, name)
         importlib.import_module(name)
 
     assert client.user_agent() == before
