@@ -224,10 +224,12 @@ class RejectedOrbit:
     ``error`` is the exception that refused *this* candidate, for an unusable
     one, and ``None`` for a record refused on age: nothing refused that one, it
     was read, measured and found too far away. It is carried here because only
-    one rejection per satellite is kept and it is the first: with two unusable
-    candidates for one ID, the last ``candidate_rejected`` event describes the
-    other candidate, and pairing it with this ``source`` would report a reason
-    against a source that did not produce it.
+    one rejection per satellite is kept: the nearest measurable one, and until
+    there is one, the first unusable candidate. So with two unusable candidates
+    for one ID, the last ``candidate_rejected`` event describes the other
+    candidate, and pairing it with this ``source`` would report a reason against
+    a source that did not produce it. It takes no part in equality: two
+    rejections that say the same thing are equal whoever raised the error.
     """
 
     norad_id: int
@@ -239,7 +241,9 @@ class RejectedOrbit:
     reason_code: str
     ceiling_days: Optional[float] = None
     limit_name: Optional[str] = None
-    error: Optional[Exception] = None
+    # Evidence, not identity: an exception compares by object, and two rejections
+    # that say the same thing are the same rejection.
+    error: Optional[Exception] = field(default=None, compare=False)
 
     @property
     def age_days(self) -> Optional[float]:

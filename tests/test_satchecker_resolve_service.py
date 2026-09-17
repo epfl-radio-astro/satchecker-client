@@ -445,6 +445,30 @@ def test_two_unusable_candidates_from_one_source_keep_the_first_error():
     assert rejected[1].error is not rejected[0].error
 
 
+def test_the_refusing_error_is_evidence_not_part_of_a_rejections_value():
+    """Two rejections that say the same thing are equal, whoever raised the error.
+
+    ``RejectedOrbit`` is a frozen value: before it carried a diagnostic, two
+    resolutions of one corrupt record produced equal rejections, and a rejection
+    survived a pickle round trip equal to itself. An exception compares by
+    identity, so as a compared field it would turn both into inequality over
+    evidence that reads the same.
+    """
+    import pickle
+
+    from satchecker_client import RejectedOrbit
+
+    fields = (A, "extra", None, None, None, None, "invalid", None, None)
+    first = RejectedOrbit(*fields, error=ValueError("line 1 checksum is 3, expected 7"))
+    second = RejectedOrbit(*fields, error=ValueError("line 1 checksum is 3, expected 7"))
+
+    assert first == second
+    assert hash(first) == hash(second)
+    revived = pickle.loads(pickle.dumps(first))
+    assert revived == first
+    assert str(revived.error) == str(first.error)
+
+
 def test_an_over_age_rejection_carries_no_error():
     """Nothing refused the record: it was read, measured and found too far away."""
     resolution = resolve_orbits(
