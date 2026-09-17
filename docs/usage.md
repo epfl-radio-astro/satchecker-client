@@ -562,19 +562,20 @@ becomes a plausible-looking run with a satellite quietly missing from it:
 An ID refused on age, one with a service failure, and one whose fallback an
 outage prevented are deliberately *not* in `unavailable`: each already has its
 own evidence, and calling any of them absent would report a satellite the
-archives do have as one they do not. The exception is `offline`, which is kept
-alongside an age rejection: the ceiling refused the record that was held, and
-nothing was allowed to look for a closer one, and those are two separate things
-to tell a user. `refresh_errors` holds the failures of IDs that stayed resolved
+archives do have as one they do not. Two classifications do sit alongside an age
+rejection, because each says something the rejection does not: `offline` — the
+ceiling refused the record that was held, and nothing was allowed to look for a
+closer one — and `not_attempted`, when `source_order` named no remote group, so
+nothing was ever going to look. `refresh_errors` holds the failures of IDs that stayed resolved
 anyway — never fatal, since the run has a record, but the run is not quite the
 one that was asked for and this is the only place that says so.
 
 `attempts[id]` lists one
 {class}`~satchecker_client.resolve.EndpointAttempt` per configured endpoint, in
-order, with `not_sent` for one that was never asked — a cache hit, or an ID an
-earlier source resolved, is therefore a row of `not_sent`s. An ID that never
-reached the remote group at all has no `attempts` entry: nothing was decided
-about asking. `events` is the same facts as they happened —
+order, with `not_sent` for one that was never asked — a cache hit is therefore
+a row of `not_sent`s. An ID that never reached the remote group at all, such as
+one an earlier source group resolved, has no `attempts` entry: nothing was
+decided about asking. `events` is the same facts as they happened —
 {class}`~satchecker_client.resolve.ResolutionEvent`, each with a stable `code`,
 the IDs it concerns, and the source, endpoint, path or error behind it. Pass
 `on_event=` to receive them as they occur, from the thread that called
