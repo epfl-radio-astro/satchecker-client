@@ -53,7 +53,8 @@ Cache
 
 Per-satellite record storage and catalogue-search snapshots.
 :func:`~satchecker_client.cache.read_orbit_file` reads one explicitly named
-orbit table and raises rather than returning an empty frame;
+orbit table and raises, rather than returning an empty frame, for input it
+cannot read — a table that is genuinely empty still reads as an empty frame;
 :func:`~satchecker_client.cache.read_legacy_tle_records` scans a directory and
 skips what it cannot use.
 

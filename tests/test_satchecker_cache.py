@@ -822,6 +822,42 @@ def test_read_orbit_file_preserves_values_and_provenance(tmp_path, write):
     assert math.copysign(1.0, loaded.loc[3, "BSTAR"]) == -1.0
 
 
+@_ORBIT_TABLE_FORMS
+def test_read_orbit_file_keeps_an_integer_that_shares_a_column_with_a_null(
+    tmp_path, write
+):
+    """A provenance integer must survive the rest of its column.
+
+    A nanosecond timestamp needs 61 bits and the double a float column holds its
+    values in has 53, so inferring one type for a column whose other row is null
+    costs the last digits of a value the file stated exactly.
+    """
+    rows = [
+        {
+            "FETCHED_AT_NS": 1750000000000000001,
+            "ECCENTRICITY": 0.0066635,
+            "BSTAR": 3.2e-05,
+        },
+        {"FETCHED_AT_NS": None, "ECCENTRICITY": 5e-324, "BSTAR": -0.0},
+    ]
+    path = tmp_path / "used_orbits.json"
+    write(path, rows)
+
+    loaded = read_orbit_file(path)
+
+    # Compared as Python integers. A float64 cell holding the rounded value
+    # compares *equal* to the exact integer, because that comparison rounds the
+    # integer to a double as well, so the rounding would pass unnoticed.
+    assert int(loaded.loc[0, "FETCHED_AT_NS"]) == 1750000000000000001
+    assert pd.isna(loaded.loc[1, "FETCHED_AT_NS"])
+    # And the floats keep the exactness the reader already promised.
+    assert loaded.loc[0, "ECCENTRICITY"] == 0.0066635
+    assert loaded.loc[0, "BSTAR"] == 3.2e-05
+    assert loaded.loc[1, "ECCENTRICITY"] == 5e-324
+    assert loaded.loc[1, "BSTAR"] == 0.0
+    assert math.copysign(1.0, loaded.loc[1, "BSTAR"]) == -1.0
+
+
 @pytest.mark.parametrize(
     "prepare",
     [
@@ -864,6 +900,59 @@ def test_read_orbit_file_errors_name_the_file(tmp_path, prepare):
 
 @pytest.mark.parametrize(
     "text",
+    ['[{"BSTAR": 1e400}]', '[{"BSTAR": -1e400}]', '{"BSTAR": {"0": 1e400}}'],
+    ids=["positive overflow", "negative overflow", "column oriented overflow"],
+)
+def test_read_orbit_file_refuses_a_number_that_overflows_to_infinity(tmp_path, text):
+    """An exponent too large for a double is refused like the literal is.
+
+    ``1e400`` is an ordinary numeric token, not one of JSON's non-standard
+    literals, and converting it yields an infinity just the same. Refusing only
+    the literal would leave the value silently changed into one no orbital
+    element may ever be.
+    """
+    path = tmp_path / "used_orbits.json"
+    path.write_text(text)
+
+    with pytest.raises(CacheValidationError) as caught:
+        read_orbit_file(path)
+    assert str(path) in str(caught.value)
+
+
+def test_read_orbit_file_names_the_file_it_could_not_decode(tmp_path):
+    """Bytes that are not text are malformed content, named as such.
+
+    The decode happens before any parsing, and a bare ``UnicodeDecodeError`` from
+    it says which byte failed but not which file it was in — the one thing a
+    caller who named a file needs to know.
+    """
+    path = tmp_path / "used_orbits.json"
+    path.write_bytes(b'[{"TLE_LINE1": "\xff"}]')
+
+    with pytest.raises(CacheValidationError) as caught:
+        read_orbit_file(path)
+    assert str(path) in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "name", ["absent.json", ""], ids=["missing file", "a directory"]
+)
+def test_read_orbit_file_leaves_a_filesystem_failure_as_an_oserror(tmp_path, name):
+    """Guarding the decode must not reclassify "cannot be read at all".
+
+    A file that is missing or unreadable is a different problem from one holding
+    the wrong thing — the caller may create it or fix a permission — and it keeps
+    the type that says so.
+    """
+    path = tmp_path / name if name else tmp_path
+
+    with pytest.raises(OSError) as caught:
+        read_orbit_file(path)
+    assert str(path) in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "text",
     ["[]", '{"NORAD_CAT_ID": {}, "TLE_LINE1": {}}'],
     ids=["empty record list", "empty columns"],
 )
@@ -879,6 +968,91 @@ def test_read_orbit_file_distinguishes_empty_table_from_invalid_file(tmp_path, t
     # is not there states nothing at all, and the two must not arrive alike.
     with pytest.raises((CacheValidationError, OSError)):
         read_orbit_file(tmp_path / "absent.json")
+
+
+def test_read_orbit_file_accepts_columns_whose_row_keys_are_ordered_differently(
+    tmp_path,
+):
+    """Columns describing the same rows in a different order are one table.
+
+    The column orientation is an object of objects, and neither JSON nor the
+    writers that emit it promise one order for the inner keys. Rows are assembled
+    by key, so every association here is unambiguous; the first column decides
+    the order they come back in.
+    """
+    path = tmp_path / "used_orbits.json"
+    path.write_text(
+        json.dumps(
+            {
+                "NORAD_CAT_ID": {"0": 25544, "1": 43013},
+                "RECORD_KIND": {"1": "omm", "0": "tle"},
+            }
+        )
+    )
+
+    loaded = read_orbit_file(path)
+
+    assert loaded["NORAD_CAT_ID"].tolist() == [25544, 43013]
+    assert loaded["RECORD_KIND"].tolist() == ["tle", "omm"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"NORAD_CAT_ID": {"0": 25544}, "RECORD_KIND": {"0": "tle", "1": "omm"}},
+        {"NORAD_CAT_ID": {"0": 25544, "1": 43013}, "RECORD_KIND": {"0": "tle"}},
+        {"NORAD_CAT_ID": {"0": 25544}, "RECORD_KIND": {"1": "omm"}},
+    ],
+    ids=["extra key", "missing key", "disjoint keys"],
+)
+def test_read_orbit_file_refuses_columns_that_describe_different_rows(tmp_path, payload):
+    """Keys in a different order are one table; different keys are not.
+
+    A column saying nothing about a row another column has cannot be filled in:
+    either the value is missing or the row is spurious, and the file does not say
+    which.
+    """
+    path = tmp_path / "used_orbits.json"
+    path.write_text(json.dumps(payload))
+
+    with pytest.raises(CacheValidationError, match="disagree"):
+        read_orbit_file(path)
+
+
+@pytest.mark.parametrize("orient", ["records", "columns"])
+def test_read_orbit_file_reads_what_pandas_to_json_writes(tmp_path, orient):
+    """Both shapes as the writer that produces them actually writes them.
+
+    ``to_json`` rounds to ten decimal places on the way out, before the reader
+    exists, so the comparison is against the numbers as serialised: the reader
+    reproduces the file, and precision the file no longer holds is not its to
+    restore.
+    """
+    rows = [
+        make_omm(43013, EPOCH, ECCENTRICITY=0.0066635, BSTAR=3.2e-05),
+        make_omm(43013, EPOCH + 1, ECCENTRICITY=5e-324, BSTAR=-0.0),
+    ]
+    # Every remaining field is set in both rows, so nothing round-trips through
+    # null and the comparison stays one of values, not of null spellings.
+    frame = pd.DataFrame(rows).drop(columns=["DATE_COLLECTED"])
+    text = frame.to_json(orient="records") if orient == "records" else frame.to_json()
+    path = tmp_path / "used_orbits.json"
+    path.write_text(text)
+
+    loaded = read_orbit_file(path)
+
+    served = json.loads(text)
+    expected = (
+        served
+        if orient == "records"
+        else [
+            {column: values[key] for column, values in served.items()}
+            for key in next(iter(served.values()))
+        ]
+    )
+    assert list(loaded.columns) == list(frame.columns)
+    for column in frame.columns:
+        assert loaded[column].tolist() == [row[column] for row in expected]
 
 
 def test_read_orbit_file_refuses_a_dict_of_lists(tmp_path):

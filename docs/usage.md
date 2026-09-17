@@ -363,7 +363,8 @@ The directory scan above skips a file it cannot use and returns what it could
 read, which is what a directory of assorted exports needs. A file the caller
 named by hand is the opposite case: an empty frame would let an unreadable file
 fall through to another source, or to none, and the run would then look like one
-where the satellite simply had no record. So malformed content raises
+where the satellite simply had no record. So malformed content — bytes that are
+not even text included — raises
 {class}`~satchecker_client.cache.CacheValidationError` naming the path, and a
 missing or unreadable file raises `OSError`. A supported but empty table is not
 an error — it says a completed run selected nothing, which a missing file does
@@ -371,15 +372,19 @@ not say.
 
 Two shapes are tables: a top-level list of record objects, and the
 `{column: {index: value}}` orientation `DataFrame.to_json()` writes by default.
-Rows come back positionally indexed, whichever was used. Nothing else is guessed
+Rows come back positionally indexed, whichever was used, and two columns listing
+the same rows in a different key order are one table. Nothing else is guessed
 at — a dict of lists is refused, and so is a managed `orbit-<NORAD>.json`
 envelope, which carries a schema version and a satellite identity that only
 {meth}`~satchecker_client.cache.TextOrbitCache.get` checks.
 
 Decoding is the standard library's, so every column survives, provenance such as
 `FETCHED_AT` and `TLE_CHECKSUM_STATUS` included, and every number is the double
-that was written — subnormals and `-0.0` with it. JSON's non-standard `NaN`,
-`Infinity` and `-Infinity` literals are refused: no orbital element may be any of
+that was written — subnormals and `-0.0` with it. Columns are `object`, holding
+those values as decoded: inferring one type per column is what turns an integer
+beside a null into a float, which a nanosecond timestamp does not survive. JSON's
+non-standard `NaN`, `Infinity` and `-Infinity` literals are refused, as is a
+number too large for a double, such as `1e400`: no orbital element may be any of
 them. No acceptance policy is applied and no record is selected, so an
 unverifiable TLE line comes back byte for byte, for
 {func}`~satchecker_client.records.validated_record` to accept or refuse.

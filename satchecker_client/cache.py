@@ -640,9 +640,10 @@ def _orbit_table_rows(payload, path: Path) -> list[dict]:
     """Row objects of one explicit orbit table, in file order.
 
     Which shapes are read and which are refused is :func:`read_orbit_file`'s
-    contract and is documented there. Index labels are read for one thing only —
-    checking that the columns agree about which rows exist — and then discarded,
-    so a row is addressed by position whichever shape the file used.
+    contract and is documented there. Index labels are read for two things —
+    checking that the columns describe the same rows, and pairing their values up
+    — and then discarded, so a row is addressed by position whichever shape the
+    file used.
     """
     if isinstance(payload, list):
         for index, row in enumerate(payload):
@@ -668,7 +669,11 @@ def _orbit_table_rows(payload, path: Path) -> list[dict]:
             "{column: {index: value}} table"
         )
     indexes = [list(column) for column in payload.values()]
-    if any(index != indexes[0] for index in indexes[1:]):
+    # The same rows, not the same key order: nothing about JSON or about the
+    # writers of this shape promises one order, and the rows below are assembled
+    # by key, so columns listing the same keys are unambiguous however they run.
+    # The first column's order is the order the rows come back in.
+    if any(set(index) != set(indexes[0]) for index in indexes[1:]):
         raise CacheValidationError(
             f"orbit file {path} has columns that disagree about which rows exist, "
             "so no row can be assembled from it"
@@ -690,6 +695,21 @@ def _reject_nonfinite(literal: str):
     raise ValueError(f"{literal} is not a number an orbit record may hold")
 
 
+def _checked_float(literal: str) -> float:
+    """Convert one JSON number, refusing an exponent that has overflowed.
+
+    ``float`` is what ``json`` would use anyway and is correctly rounded, so a
+    finite value is the double the file states. What it does not do is fail: a
+    token such as ``1e400`` has no double and converts to an infinity, arriving
+    at a record as the very value :func:`_reject_nonfinite` refuses when it is
+    spelled as a literal.
+    """
+    value = float(literal)
+    if not math.isfinite(value):
+        raise ValueError(f"{literal} is not a number an orbit record may hold")
+    return value
+
+
 def read_orbit_file(path) -> pd.DataFrame:
     """Read one explicit orbit table from *path*, strictly.
 
@@ -702,6 +722,12 @@ def read_orbit_file(path) -> pd.DataFrame:
     number is the double that was written, subnormals and ``-0.0`` included,
     because the standard library's JSON parser is correctly rounded and nothing
     here re-infers a value.
+
+    Nothing re-infers one because the columns are ``object``, holding the values
+    the JSON parser produced. Inferring one type per column is what silently
+    changes them: a column holding an integer beside a null infers a float, and
+    a nanosecond timestamp does not survive that. A caller doing arithmetic over
+    a column converts it, knowing what the column is.
 
     Two shapes are tables, and they are the two an orbit table gets written in: a
     top-level list of record objects, and the ``{column: {index: value}}``
@@ -729,15 +755,28 @@ def read_orbit_file(path) -> pd.DataFrame:
     their contract.
 
     Raises :class:`CacheValidationError`, naming the path, for content that is
-    not a readable orbit table; ``OSError`` for a file that cannot be read at
-    all. Neither is ever an empty frame — an empty frame would let an unreadable
-    file fall through to another source, and the run would then look like one
-    where the satellite simply had no record.
+    not a readable orbit table — undecodable bytes, broken JSON, a number with no
+    double, a shape that is not one of the two; ``OSError`` for a file that
+    cannot be read at all. Neither *failure* is ever an empty frame, which would
+    let an unreadable file fall through to another source and leave the run
+    looking like one where the satellite simply had no record. A table that is
+    merely empty is not a failure: an explicit ``[]`` or ``{}`` is a readable
+    table of no rows and reads as one.
     """
     path = Path(path)
-    text = path.read_text()  # OSError, naming the path, for missing or unreadable
     try:
-        payload = json.loads(text, parse_constant=_reject_nonfinite)
+        # Decoding is part of reading the content, so bytes that are not text are
+        # malformed like text that is not JSON. OSError is deliberately not
+        # caught: a file that cannot be read at all is the other kind of failure.
+        text = path.read_text()
+    except UnicodeError as error:
+        raise CacheValidationError(
+            f"orbit file {path} is not decodable text: {error}"
+        ) from error
+    try:
+        payload = json.loads(
+            text, parse_constant=_reject_nonfinite, parse_float=_checked_float
+        )
     except ValueError as error:
         raise CacheValidationError(
             f"orbit file {path} is not readable JSON: {error}"
@@ -747,7 +786,7 @@ def read_orbit_file(path) -> pd.DataFrame:
         # The columns of an empty column-oriented table are still known, and a
         # caller reading a column off an empty frame should not have to guess.
         return pd.DataFrame(columns=list(payload) if isinstance(payload, dict) else [])
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, dtype=object)
 
 
 def read_legacy_tle_records(directory) -> pd.DataFrame:
