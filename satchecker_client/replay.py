@@ -47,10 +47,17 @@ from .records import (
     KIND_OMM,
     KIND_TLE,
     OMM_ELEMENT_COLUMNS,
+    norad_id_of,
     record_kind,
+    validate_record,
     validated_record,
 )
 from .resolve import (
+    INPUT_CHECKSUM_POLICY,
+    INPUT_IDENTITY,
+    INPUT_INVALID_RECORD,
+    INPUT_STRUCTURE,
+    INPUT_UNREADABLE,
     OrbitInputError,
     _checked_norad_id,
     _missing,
@@ -355,6 +362,7 @@ def _read_replay_ids(path: Path) -> list:
             f"only {REPLAY_IDS_FILE} and {REPLAY_RECORDS_FILE} from the "
             "directory it is given, and has nothing else to fall back to.",
             path=path,
+            code=INPUT_UNREADABLE,
         ) from error
 
     saved: list = []
@@ -369,6 +377,7 @@ def _read_replay_ids(path: Path) -> list:
                 f"{path} line {line_number} is not a NORAD catalogue ID: {error}",
                 path=path,
                 row=line_number,
+                code=INPUT_IDENTITY,
             ) from error
         if norad_id in saved:
             raise OrbitInputError(
@@ -378,9 +387,33 @@ def _read_replay_ids(path: Path) -> list:
                 path=path,
                 row=line_number,
                 norad_id=norad_id,
+                code=INPUT_STRUCTURE,
             )
         saved.append(norad_id)
     return saved
+
+
+def _refusal_code(record) -> str:
+    """Which category refused *record*, decided by re-validating it.
+
+    Not by reading the message. A record that validates once missing checksums
+    are allowed was refused by that policy alone, and is the one refusal an
+    application may offer ``allow_missing_checksum=True`` for; one whose lines
+    belong to another satellite is an identity failure under every policy, and
+    anything else is the record itself.
+    """
+    try:
+        validated_record(record, allow_missing_checksum=True)
+    except (ValueError, TypeError):
+        pass
+    else:
+        return INPUT_CHECKSUM_POLICY
+    try:
+        embedded = validate_record(record, allow_missing_checksum=True)
+        own = norad_id_of(record, "orbit record")
+    except (ValueError, TypeError):
+        return INPUT_INVALID_RECORD
+    return INPUT_IDENTITY if embedded != own else INPUT_INVALID_RECORD
 
 
 def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
@@ -417,6 +450,7 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
             "replay has no alternative source by design, so it stops here "
             "rather than resolving these satellites from somewhere else.",
             path=records_path,
+            code=INPUT_UNREADABLE,
         ) from error
 
     rows_by_id: dict = {}
@@ -429,6 +463,7 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                 f"satellite: {error}",
                 path=records_path,
                 row=row_number,
+                code=INPUT_IDENTITY,
             ) from error
         if norad_id is None:
             raise OrbitInputError(
@@ -436,6 +471,7 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                 "cannot be matched to a saved satellite",
                 path=records_path,
                 row=row_number,
+                code=INPUT_IDENTITY,
             )
         rows_by_id.setdefault(norad_id, []).append((row_number, row))
 
@@ -446,6 +482,7 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
             f"{ids_path} does not list. The two files describe one selection and "
             "have to agree about it.",
             path=records_path,
+            code=INPUT_STRUCTURE,
         )
 
     records: list = []
@@ -458,6 +495,7 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                 "would make it a different run — so it stops here.",
                 path=records_path,
                 norad_id=norad_id,
+                code=INPUT_STRUCTURE,
             )
         if len(saved) > 1:
             raise OrbitInputError(
@@ -467,13 +505,14 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                 "to freeze.",
                 path=records_path,
                 norad_id=norad_id,
+                code=INPUT_STRUCTURE,
             )
         row_number, row = saved[0]
+        record = _without_null_markers(row)
         try:
             records.append(
                 validated_record(
-                    _without_null_markers(row),
-                    allow_missing_checksum=allow_missing_checksum,
+                    record, allow_missing_checksum=allow_missing_checksum
                 )
             )
         except (ValueError, TypeError) as error:
@@ -485,5 +524,6 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                 path=records_path,
                 row=row_number,
                 norad_id=norad_id,
+                code=_refusal_code(record),
             ) from error
     return norad_ids, records

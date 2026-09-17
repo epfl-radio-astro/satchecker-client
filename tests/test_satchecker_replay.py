@@ -46,6 +46,11 @@ from .tle_helpers import (  # noqa: F401  block_network is an autouse fixture
 )
 from .resolve_helpers import (
     GROUP_EXTRA,
+    INPUT_CHECKSUM_POLICY,
+    INPUT_IDENTITY,
+    INPUT_INVALID_RECORD,
+    INPUT_STRUCTURE,
+    INPUT_UNREADABLE,
     ForbiddenEndpoint,
     forbid,
     forbid_acquisition,
@@ -551,6 +556,116 @@ def test_replay_requires_exact_file_alignment(tmp_path, monkeypatch, prepare):
     assert str(directory) in str(caught.value)
 
 
+@pytest.mark.parametrize(
+    "prepare,code",
+    [
+        (
+            lambda d: (d / replay_file_names()[1]).write_text(
+                json.dumps(_columns(_good_rows()))
+            ),
+            INPUT_UNREADABLE,
+        ),
+        (
+            lambda d: (d / replay_file_names()[0]).write_text(_ids_text(A, B)),
+            INPUT_UNREADABLE,
+        ),
+        (lambda d: _write_pair(d, _ids_text(A, B), "{not json"), INPUT_UNREADABLE),
+        (
+            lambda d: _write_pair(
+                d, _ids_text(A, B, A), json.dumps(_columns(_good_rows()))
+            ),
+            INPUT_STRUCTURE,
+        ),
+        (
+            lambda d: _write_pair(d, _ids_text(A), json.dumps(_columns(_good_rows()))),
+            INPUT_STRUCTURE,
+        ),
+        (
+            lambda d: _write_pair(
+                d, _ids_text(A, B, C), json.dumps(_columns(_good_rows()))
+            ),
+            INPUT_STRUCTURE,
+        ),
+        (
+            lambda d: _write_pair(
+                d,
+                _ids_text(A),
+                json.dumps(_columns([_good_rows()[0], _good_rows()[0]])),
+            ),
+            INPUT_STRUCTURE,
+        ),
+        (
+            lambda d: _write_pair(
+                d, f"{A}\n25544.5\n", json.dumps(_columns(_good_rows()))
+            ),
+            INPUT_IDENTITY,
+        ),
+        (
+            lambda d: _write_pair(
+                d,
+                _ids_text(A),
+                json.dumps(
+                    _columns(
+                        [
+                            {
+                                key: value
+                                for key, value in _good_rows()[0].items()
+                                if key != "NORAD_CAT_ID"
+                            }
+                        ]
+                    )
+                ),
+            ),
+            INPUT_IDENTITY,
+        ),
+        (
+            lambda d: _write_pair(
+                d,
+                _ids_text(A),
+                json.dumps(_columns([dict(_good_rows()[0], NORAD_CAT_ID="25544.5")])),
+            ),
+            INPUT_IDENTITY,
+        ),
+        (
+            lambda d: _write_pair(
+                d,
+                _ids_text(B),
+                json.dumps(_columns([dict(_good_rows()[0], NORAD_CAT_ID=B)])),
+            ),
+            INPUT_IDENTITY,
+        ),
+    ],
+    ids=[
+        "no ID file",
+        "no records file",
+        "a corrupt records file",
+        "a satellite listed twice",
+        "a record for an unlisted satellite",
+        "a listed satellite with no record",
+        "two records for one satellite",
+        "an ID line that is not an ID",
+        "a row with no identity",
+        "a row with an unusable identity",
+        "a row whose lines belong to another satellite",
+    ],
+)
+def test_replay_failures_say_which_kind_of_failure_they_are(tmp_path, prepare, code):
+    """Each refusal carries its category, so no caller has to read the message.
+
+    None of these is a record the checksum opt-in would admit — a satellite
+    listed twice and a listed satellite with no record least of all — and an
+    application that suggested it here would be sending the user after a setting
+    that cannot repair the file.
+    """
+    directory = _directory(tmp_path)
+    prepare(directory)
+
+    with pytest.raises(orbit_input_error()) as caught:
+        load_replay_orbits(directory, allow_missing_checksum=False)
+
+    assert caught.value.code == code
+
+
 def test_replay_undecodable_id_file_has_context(tmp_path):
     """Bytes that are not text fail like any other unreadable input, and say so.
 
@@ -631,8 +746,12 @@ def test_unverified_replay_requires_explicit_policy_every_time(tmp_path):
     directory = _directory(tmp_path)
     save_replay_orbits(directory, [A, B], [stripped, rechecksummed])
 
-    with pytest.raises(orbit_input_error()):
+    with pytest.raises(orbit_input_error()) as caught:
         load_replay_orbits(directory, allow_missing_checksum=False)
+
+    # The one category the opt-in below would lift, and it says so rather than
+    # leaving the caller to recognise the sentence about it.
+    assert caught.value.code == INPUT_CHECKSUM_POLICY
 
     _, loaded = load_replay_orbits(directory, allow_missing_checksum=True)
     assert [record[CHECKSUM_STATUS_FIELD] for record in loaded] == [
@@ -670,8 +789,12 @@ def test_an_unknown_status_or_corrupt_checksum_is_always_refused(
     directory = _directory(tmp_path, f"{defect}-{allow}")
     _write_pair(directory, _ids_text(A), json.dumps(_columns([row])))
 
-    with pytest.raises(orbit_input_error()):
+    with pytest.raises(orbit_input_error()) as caught:
         load_replay_orbits(directory, allow_missing_checksum=allow)
+
+    # The record itself, under either policy — never the category whose remedy
+    # is the opt-in that is already on in half of these runs.
+    assert caught.value.code == INPUT_INVALID_RECORD
 
 
 def test_a_claimed_verified_status_cannot_launder_checksum_less_lines(tmp_path):

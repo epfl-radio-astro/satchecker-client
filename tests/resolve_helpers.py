@@ -99,6 +99,15 @@ ATTEMPT_NOT_SENT = "not_sent"
 REASON_OVER_AGE = "over_age"
 REASON_INVALID = "invalid"
 
+#: ``OrbitInputError.code`` categories. Only ``checksum_policy`` is a refusal
+#: ``allow_missing_checksum=True`` would lift; the other four are defects in the
+#: input, which no policy setting repairs.
+INPUT_UNREADABLE = "unreadable"
+INPUT_STRUCTURE = "structure"
+INPUT_IDENTITY = "identity"
+INPUT_INVALID_RECORD = "invalid_record"
+INPUT_CHECKSUM_POLICY = "checksum_policy"
+
 #: ``OrbitResolution.unavailable`` classifications.
 UNAVAILABLE_ABSENT = "absent"
 UNAVAILABLE_OFFLINE = "offline"

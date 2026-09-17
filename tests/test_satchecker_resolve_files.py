@@ -47,6 +47,11 @@ from .resolve_helpers import (
     ATTEMPT_ERROR,
     GROUP_EXTRA,
     GROUP_REMOTE,
+    INPUT_CHECKSUM_POLICY,
+    INPUT_IDENTITY,
+    INPUT_INVALID_RECORD,
+    INPUT_STRUCTURE,
+    INPUT_UNREADABLE,
     SOURCE_CACHE,
     ForbiddenEndpoint,
     StubEndpoint,
@@ -122,12 +127,16 @@ def _managed_envelope(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "prepare,row",
+    "prepare,row,code",
     [
-        (lambda path, tmp: path.write_text("{not json"), None),
-        (lambda path, tmp: path.mkdir(), None),
-        (lambda path, tmp: path.write_text('[{"foo": 1}]'), None),
-        (lambda path, tmp: path.write_text(_managed_envelope(tmp)), None),
+        (lambda path, tmp: path.write_text("{not json"), None, INPUT_UNREADABLE),
+        (lambda path, tmp: path.mkdir(), None, INPUT_UNREADABLE),
+        (lambda path, tmp: path.write_text('[{"foo": 1}]'), None, INPUT_UNREADABLE),
+        (
+            lambda path, tmp: path.write_text(_managed_envelope(tmp)),
+            None,
+            INPUT_UNREADABLE,
+        ),
         (
             lambda path, tmp: _write_records(
                 path,
@@ -137,6 +146,7 @@ def _managed_envelope(tmp_path):
                 ],
             ),
             1,
+            INPUT_IDENTITY,
         ),
     ],
     ids=[
@@ -147,8 +157,8 @@ def _managed_envelope(tmp_path):
         "a malformed identity on an unrequested row",
     ],
 )
-def test_extra_directory_errors_identify_file_and_row(tmp_path, prepare, row):
-    """Every failure names the file, and a row failure names the row too."""
+def test_extra_directory_errors_identify_file_and_row(tmp_path, prepare, row, code):
+    """Every failure names the file, its category, and the row if it has one."""
     directory = tmp_path / "extra"
     directory.mkdir()
     path = directory / "supplied.json"
@@ -162,6 +172,7 @@ def test_extra_directory_errors_identify_file_and_row(tmp_path, prepare, row):
     assert str(error.path) == str(path)
     assert str(path) in str(error)
     assert error.row == row
+    assert error.code == code
     if row is None:
         assert error.__cause__ is not None
 
@@ -615,3 +626,24 @@ def test_orbit_input_error_is_a_satchecker_error():
     error_type = orbit_input_error()
     assert issubclass(error_type, SatCheckerError)
     assert error_type is resolve_module().OrbitInputError
+
+
+def test_orbit_input_error_categories_are_exported_constants():
+    """Each category is a public constant with a distinct value, and optional.
+
+    A caller branching on ``code`` has to be able to name the branches, and an
+    error raised without one — the constructor's default — still builds.
+    """
+    module = resolve_module()
+    codes = {
+        "INPUT_UNREADABLE": INPUT_UNREADABLE,
+        "INPUT_STRUCTURE": INPUT_STRUCTURE,
+        "INPUT_IDENTITY": INPUT_IDENTITY,
+        "INPUT_INVALID_RECORD": INPUT_INVALID_RECORD,
+        "INPUT_CHECKSUM_POLICY": INPUT_CHECKSUM_POLICY,
+    }
+    for name, value in codes.items():
+        assert getattr(module, name) == value, name
+        assert name in module.__all__, name
+    assert len(set(codes.values())) == len(codes)
+    assert orbit_input_error()("no category was decided").code is None

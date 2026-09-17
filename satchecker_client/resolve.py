@@ -56,6 +56,11 @@ from .service import store_or_warn
 
 __all__ = [
     "EndpointAttempt",
+    "INPUT_CHECKSUM_POLICY",
+    "INPUT_IDENTITY",
+    "INPUT_INVALID_RECORD",
+    "INPUT_STRUCTURE",
+    "INPUT_UNREADABLE",
     "OrbitInputError",
     "OrbitResolution",
     "RejectedOrbit",
@@ -141,21 +146,45 @@ EVENT_CACHE_WRITE_FAILED = "cache_write_failed"
 _AGE_TOL_DAYS = 3e-8
 
 
+#: :attr:`OrbitInputError.code` categories: what kind of failure it was, as a
+#: stable string. ``unreadable`` is a file that is missing, undecodable, not
+#: JSON, or not an orbit table; ``structure`` is a saved selection that does not
+#: line up — a listed satellite with no record, a record for an unlisted one, a
+#: satellite listed or recorded twice; ``identity`` is a row or line whose NORAD
+#: identity is missing, malformed, or not the one it is filed under, a TLE whose
+#: lines belong to another satellite included; ``invalid_record`` is a record
+#: that fails validation under *any* policy — a corrupt checksum, an unknown
+#: provenance claim, an element out of range. ``checksum_policy`` is the one
+#: with a remedy: the record is refused only because missing checksums, or the
+#: provenance of a record accepted without them, were not allowed, and the same
+#: record validates with ``allow_missing_checksum=True``. That is decided by
+#: re-validating permissively where the failure happened, so an application can
+#: offer the opt-in for exactly the failures it would lift.
+INPUT_UNREADABLE = "unreadable"
+INPUT_STRUCTURE = "structure"
+INPUT_IDENTITY = "identity"
+INPUT_INVALID_RECORD = "invalid_record"
+INPUT_CHECKSUM_POLICY = "checksum_policy"
+
+
 class OrbitInputError(SatCheckerError, ValueError):
     """An explicitly named orbit file could not be read as the input it claims to be.
 
     Carries the path, the row where a row-level failure was found (``None`` for
-    a file-level one), and the satellite it concerns when that is known, so an
-    application can add its own wording without parsing the message. Also a
-    ``ValueError``, since that is what the readers this composes raise and what
-    the callers catching them already expect.
+    a file-level one), the satellite it concerns when that is known, and
+    ``code``: which of the ``INPUT_*`` categories it is, so an application can
+    tell a file it cannot read from a record its own policy refused without
+    matching the message. ``code`` is ``None`` only for an error raised without
+    one. Also a ``ValueError``, since that is what the readers this composes
+    raise and what the callers catching them already expect.
     """
 
-    def __init__(self, message, *, path=None, row=None, norad_id=None):
+    def __init__(self, message, *, path=None, row=None, norad_id=None, code=None):
         super().__init__(message)
         self.path = path
         self.row = row
         self.norad_id = norad_id
+        self.code = code
 
 
 # ---------------------------------------------------------------------------
@@ -627,6 +656,7 @@ def read_extra_orbit_dir(directory) -> pd.DataFrame:
             raise OrbitInputError(
                 f"orbit file {path} could not be read as an orbit table: {error}",
                 path=path,
+                code=INPUT_UNREADABLE,
             ) from error
         if not len(frame):
             continue
@@ -646,6 +676,7 @@ def _checked_identities(frame: pd.DataFrame, path: Path) -> pd.DataFrame:
                 f"satellite: {error}",
                 path=path,
                 row=row_number,
+                code=INPUT_IDENTITY,
             ) from error
     frame = frame.copy()
     # Explicitly ``object``, holding the Python integers just validated. A

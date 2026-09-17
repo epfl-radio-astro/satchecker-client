@@ -88,7 +88,9 @@ own it raises only for a malformed rule or identity — a satellite it could not
 resolve is evidence in the result, not an exception — though an ``on_event``
 callback's own exception propagates through it;
 :class:`~satchecker_client.resolve.OrbitInputError` comes from the strict
-directory reader beside it.
+directory reader beside it, and from the replay loader. Its ``code`` is one of
+the ``INPUT_*`` categories below, so a caller can tell a file it could not read
+from a record its own checksum policy refused without matching the message.
 
 .. automodule:: satchecker_client.resolve
     :members:

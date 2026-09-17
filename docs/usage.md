@@ -647,8 +647,9 @@ which keeps the ingestion contract yours:
 - {func}`~satchecker_client.resolve.read_extra_orbit_dir` reads every `*.json`
   in a directory through {func}`~satchecker_client.cache.read_orbit_file` and
   raises {class}`~satchecker_client.resolve.OrbitInputError` — naming the file,
-  and the row for a row-level failure — for anything it cannot read, including a
-  table that is not an orbit table and a row whose `NORAD_CAT_ID` is unusable.
+  the row for a row-level failure, and the `code` for which kind of failure it
+  was — for anything it cannot read, including a table that is not an orbit
+  table (`unreadable`) and a row whose `NORAD_CAT_ID` is unusable (`identity`).
   Every row's identity is checked, including rows you did not ask for: a
   malformed identity that survives to a wanted-ID filter simply vanishes from
   it, and the service then answers for the satellite the file was meant to
@@ -690,6 +691,21 @@ a record for a satellite the ID file does not list, a listed satellite with no
 record, two records for one, an identity that does not read. The two files are
 validated and serialised before either is opened, so a failure does not leave a
 half-written pair, though writing them one after the other is not a transaction.
+
+Each of those refusals is an
+{class}`~satchecker_client.resolve.OrbitInputError` carrying a `code`, so what
+kind of failure it was does not have to be read out of the message:
+`unreadable` for a file that is missing, undecodable, not JSON or not an orbit
+table; `structure` for two files that do not describe one selection — a listed
+satellite with no record, a record for an unlisted one, a satellite listed or
+recorded twice; `identity` for a row or line whose NORAD identity is missing,
+malformed, or not the one it is filed under; `invalid_record` for a record no
+policy accepts, such as a corrupt checksum or an unrecognised provenance claim;
+and `checksum_policy` for the one refusal `allow_missing_checksum=True` would
+lift, decided by re-validating that record permissively rather than by its
+wording. `code` is `None` only on an error raised without one. It is worth
+branching on: a satellite listed twice and a record saved without its checksum
+digits read alike as prose and have nothing in common as remedies.
 
 {func}`~satchecker_client.replay.save_orbits_for_reuse` writes just the table,
 to a path you name, and permits several rows for one satellite — a run may use

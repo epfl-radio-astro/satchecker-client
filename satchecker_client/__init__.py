@@ -82,6 +82,11 @@ from .replay import (
 )
 from .resolve import (
     EndpointAttempt,
+    INPUT_CHECKSUM_POLICY,
+    INPUT_IDENTITY,
+    INPUT_INVALID_RECORD,
+    INPUT_STRUCTURE,
+    INPUT_UNREADABLE,
     OrbitInputError,
     OrbitResolution,
     RejectedOrbit,
@@ -141,6 +146,11 @@ __all__ = [
     "fetch_nearest_batch",
     "store_or_warn",
     "EndpointAttempt",
+    "INPUT_CHECKSUM_POLICY",
+    "INPUT_IDENTITY",
+    "INPUT_INVALID_RECORD",
+    "INPUT_STRUCTURE",
+    "INPUT_UNREADABLE",
     "OrbitInputError",
     "OrbitResolution",
     "RejectedOrbit",
