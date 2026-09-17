@@ -760,6 +760,11 @@ class TestTimeConversions:
         # round trip is exact to well under a millisecond, not to the microsecond.
         assert abs((sc.jd_to_datetime(jd_value) - stamp).total_seconds()) < 1e-4
         assert sc.jd_to_datetime(2460000.0) == datetime(2023, 2, 24, 12)
-        # An aware datetime is read in UTC and comes back naive.
-        aware = stamp.replace(tzinfo=timezone.utc)
-        assert sc.datetime_to_jd(aware) == jd_value
+        # An aware datetime is converted to UTC, whatever its offset, and comes
+        # back naive: 14:00 at UTC+2 is the same instant as 12:00 UTC.
+        from datetime import timedelta
+
+        plus_two = timezone(timedelta(hours=2))
+        assert sc.datetime_to_jd(datetime(2023, 2, 24, 14, tzinfo=plus_two)) == 2460000.0
+        assert sc.jd_to_datetime(2460000.0).tzinfo is None
+        assert sc.datetime_to_jd(stamp.replace(tzinfo=timezone.utc)) == jd_value

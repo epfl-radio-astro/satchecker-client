@@ -48,7 +48,16 @@ Time
 The UTC Julian-date conversions every epoch in this package is stated in. A
 caller that keeps records or compares their epochs against its own clock uses
 these rather than a second convention that agrees to the second and not the
-millisecond.
+millisecond. What they assume:
+
+- A naive ``datetime`` is read as UTC; an aware one is converted to UTC first,
+  so ``2023-02-24 14:00+02:00`` and ``2023-02-24 12:00`` both give ``2460000.0``.
+- :func:`~satchecker_client.jd_to_datetime` returns a naive UTC ``datetime``.
+- Days are 86 400 seconds; leap seconds are not modelled, which is also how
+  TLE and OMM epochs are written.
+- A Julian Date is a double, and near 2.46e6 adjacent doubles are about 40 µs
+  apart, so timestamps a few microseconds apart can map to one value and a
+  round trip is exact to well under a millisecond, not to the microsecond.
 
 .. autofunction:: satchecker_client.datetime_to_jd
 
