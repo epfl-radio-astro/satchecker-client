@@ -1001,16 +1001,16 @@ class _Resolution:
             )
         for norad_id, error in failures.items():
             self.record_failure(norad_id, error)
-        # An ID this endpoint resolved is no longer a coverage failure, whatever
-        # an earlier one recorded against it — but it is still a failed request.
-        for norad_id in list(self.result.service_errors):
-            if norad_id in self.result.resolved:
-                self.result.refresh_errors[norad_id] = self.result.service_errors.pop(
-                    norad_id
-                )
         return served
 
     def record_failure(self, norad_id: int, error) -> None:
+        """File a request failure under whether the run has a record regardless.
+
+        Which of the two it is can still change: an ID a later endpoint or a
+        later source group resolves stops being a coverage failure, and
+        :meth:`finalise` moves it. It is still a failed request either way, and
+        has to stay somewhere the log can find it.
+        """
         if norad_id in self.result.resolved:
             self.result.refresh_errors[norad_id] = error
         else:
@@ -1286,6 +1286,11 @@ class _Resolution:
 
     def finalise(self) -> None:
         """Complete the attempts, classify what is left, and report the rest."""
+        for norad_id in list(self.result.service_errors):
+            if norad_id in self.result.resolved:
+                self.result.refresh_errors[norad_id] = self.result.service_errors.pop(
+                    norad_id
+                )
         self.result.attempts = {
             norad_id: [
                 self.answers.get(norad_id, {}).get(label)
