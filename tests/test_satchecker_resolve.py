@@ -51,6 +51,7 @@ from .resolve_helpers import (
     SOURCE_EXTRA,
     SOURCE_SERVICE,
     STRICTLY_FRESHER,
+    UNAVAILABLE_INVALID_LOCAL,
     UNAVAILABLE_NOT_ATTEMPTED,
     UNAVAILABLE_OFFLINE,
     EventLog,
@@ -807,6 +808,56 @@ def test_offline_keeps_ceiling_and_skips_refresh(tmp_path, monkeypatch):
     assert C not in resolution.rejected
     assert resolution.unavailable[C] == UNAVAILABLE_OFFLINE
     assert resolution.service_errors == {}
+
+
+def _corrupted(frame) -> pd.DataFrame:
+    """*frame*'s first TLE with one checksum digit wrong, so it will not validate."""
+    frame = frame.copy()
+    line1 = frame.loc[0, "TLE_LINE1"]
+    frame.loc[0, "TLE_LINE1"] = line1[:68] + str((int(line1[68]) + 1) % 10)
+    return frame
+
+
+def test_offline_survives_an_unusable_record_beside_an_over_age_one(tmp_path, monkeypatch):
+    """``invalid_local`` means *only* unusable local evidence, and this is not that.
+
+    A too-old cached record is measurable evidence, and the ceiling that
+    refused it is a remedy; saying the run had nothing but a broken file hides
+    both, and hides that nothing was allowed to ask for something better.
+    """
+    cache = _cache(tmp_path)
+    cache.store(A, frame_of(KIND_TLE, [(A, OBS - 5.0)]))
+    forbid_acquisition(monkeypatch)
+    corrupt = _corrupted(extra_frame([(KIND_TLE, A, OBS - 0.5)]))
+
+    settings = dict(
+        source_order=(GROUP_EXTRA, GROUP_REMOTE),
+        offline=True,
+        remote_max_age_days=3.0,
+        extra_orbit_max_age_days=None,
+        endpoints=(ForbiddenEndpoint().pair,),
+    )
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(cache=cache, **settings),
+        extra_records=corrupt,
+    )
+
+    assert resolution.rejected[A].source == SOURCE_CACHE
+    assert resolution.rejected[A].reason_code == REASON_OVER_AGE
+    assert resolution.unavailable[A] == UNAVAILABLE_OFFLINE
+
+    # With nothing but the broken file, the evidence *is* exclusively unusable.
+    only_invalid = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(cache=None, **settings),
+        extra_records=corrupt,
+    )
+    assert only_invalid.unavailable[A] == UNAVAILABLE_INVALID_LOCAL
 
 
 def test_cache_none_disables_storage(monkeypatch):

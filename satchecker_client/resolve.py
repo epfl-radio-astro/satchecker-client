@@ -103,10 +103,14 @@ ATTEMPT_NOT_SENT = "not_sent"
 REASON_OVER_AGE = "over_age"
 REASON_INVALID = "invalid"
 
-#: Why an unresolved satellite has no failure to show for it. An ID refused on
-#: age, one with a service failure, and one whose fallback an outage prevented
-#: are deliberately absent from this map: their evidence is the rejection, the
-#: error and the attempts.
+#: Why an unresolved satellite has no failure to show for it. An ID with a
+#: service failure, one whose fallback an outage prevented, and one refused on
+#: age are deliberately absent from this map: their evidence is the error, the
+#: attempts and the rejection. ``offline`` is the one that coexists with an age
+#: rejection, because it is a fact about the run rather than about the record:
+#: the ceiling refused what was held, and nothing was allowed to look for
+#: better. ``invalid_local`` means the local evidence was *only* unusable —
+#: never merely that some of it was.
 UNAVAILABLE_ABSENT = "absent"
 UNAVAILABLE_OFFLINE = "offline"
 UNAVAILABLE_NOT_ATTEMPTED = "not_attempted"
@@ -787,8 +791,13 @@ class _Resolution:
         #: ``{norad_id: {endpoint label: EndpointAttempt}}``, filled as answers
         #: land and completed with ``not_sent`` at the end.
         self.answers: dict = {}
-        #: IDs whose only local evidence was a record that did not validate.
+        #: IDs a local source offered a record for that did not validate.
         self.invalid_local: set = set()
+        #: IDs a local source offered a *measurable* record for — one whose
+        #: epoch was read and whose ceiling refused it. That is evidence with a
+        #: remedy in it, so neither "only unusable evidence" nor "the archives
+        #: have none" can be said of such an ID.
+        self.over_age_local: set = set()
 
     # -- events ------------------------------------------------------------
 
@@ -1139,6 +1148,8 @@ class _Resolution:
     def reject_over_age(
         self, norad_id, source, endpoint, candidate, ceiling, limit_name
     ) -> RejectedOrbit:
+        if source != SOURCE_SERVICE:
+            self.over_age_local.add(norad_id)
         rejection = RejectedOrbit(
             norad_id=norad_id,
             source=source,
@@ -1339,6 +1350,13 @@ class _Resolution:
         fallback an outage prevented are all left out: each already has its own
         evidence, and calling any of them absent would report a satellite the
         archives do have as one they do not.
+
+        Both of the classifications that make a claim about the *local* evidence
+        therefore have to look at all of it. A record refused on age is a record
+        — measurable, with the limit that refused it named — so an ID holding
+        one is neither a satellite the archives have nothing for nor one whose
+        only evidence is unusable, however the endpoints answered afterwards.
+        Being unable to *ask* is a separate fact, and survives alongside it.
         """
         if norad_id in self.result.service_errors:
             return None
@@ -1347,12 +1365,17 @@ class _Resolution:
         completed = [
             attempt for attempt in needed if attempt.status != ATTEMPT_NOT_SENT
         ]
-        if norad_id in self.invalid_local and not completed:
+        measurable = norad_id in self.over_age_local
+        if norad_id in self.invalid_local and not completed and not measurable:
             return UNAVAILABLE_INVALID_LOCAL
         if norad_id not in self.attempted:
             return UNAVAILABLE_NOT_ATTEMPTED
         if self.offline:
             return UNAVAILABLE_OFFLINE
-        if needed and all(attempt.status == ATTEMPT_EMPTY for attempt in needed):
+        if (
+            needed
+            and not measurable
+            and all(attempt.status == ATTEMPT_EMPTY for attempt in needed)
+        ):
             return UNAVAILABLE_ABSENT
         return None

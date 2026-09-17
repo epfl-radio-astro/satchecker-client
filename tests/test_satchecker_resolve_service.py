@@ -286,6 +286,43 @@ def test_absence_age_and_service_failure_are_distinct():
     assert isinstance(resolution.service_errors[F], SatCheckerResponseError)
 
 
+@pytest.mark.parametrize("source", [SOURCE_EXTRA, SOURCE_CACHE])
+def test_an_over_age_local_record_is_not_absence(tmp_path, source):
+    """The archives having nothing does not make a too-old record absent.
+
+    A satellite whose only record is five days from the observation is one the
+    user can do something about — widen the ceiling, supply a closer record.
+    Reporting it as one the archives have no record of hides the record and
+    the remedy at once.
+    """
+    settings = dict(remote_max_age_days=3.0, extra_orbit_max_age_days=3.0)
+    extra_records = None
+    if source == SOURCE_EXTRA:
+        settings.update(source_order=(GROUP_EXTRA, GROUP_REMOTE))
+        extra_records = extra_frame([(KIND_TLE, A, OBS - 5.0)])
+    else:
+        cache = TextOrbitCache(tmp_path / "cache")
+        cache.store(A, frame_of(KIND_TLE, [(A, OBS - 5.0)]))
+        settings.update(source_order=(GROUP_REMOTE,), cache=cache)
+    first, second = StubEndpoint("first"), StubEndpoint("second")
+
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(endpoints=(first.pair, second.pair), fallback=True, **settings),
+        extra_records=extra_records,
+    )
+
+    assert [attempt.status for attempt in resolution.attempts[A]] == [
+        ATTEMPT_EMPTY,
+        ATTEMPT_EMPTY,
+    ]
+    assert resolution.rejected[A].source == source
+    assert resolution.rejected[A].reason_code == REASON_OVER_AGE
+    assert A not in resolution.unavailable
+
+
 def test_best_rejection_retains_offset_and_its_own_ceiling():
     """The rejection kept is the nearest measurable one, with *its* limit named."""
     extra = extra_frame([(KIND_TLE, A, OBS - 10.0)])
