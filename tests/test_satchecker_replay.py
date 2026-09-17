@@ -517,6 +517,26 @@ def test_replay_requires_exact_file_alignment(tmp_path, monkeypatch, prepare):
     assert str(directory) in str(caught.value)
 
 
+def test_replay_undecodable_id_file_has_context(tmp_path):
+    """Bytes that are not text fail like any other unreadable input, and say so.
+
+    Decoding is part of reading a file, so it cannot be the one failure that
+    escapes the contextual error the caller catches: an application left with a
+    bare ``UnicodeDecodeError`` has neither the path nor the reason to report.
+    """
+    directory = _directory(tmp_path)
+    save_replay_orbits(directory, [A], [make_tle_record(A, TLE_EPOCH)])
+    ids_path = directory / replay_file_names()[0]
+    ids_path.write_bytes(b"\xff\n")
+
+    with pytest.raises(orbit_input_error()) as caught:
+        load_replay_orbits(directory, allow_missing_checksum=False)
+
+    assert str(caught.value.path) == str(ids_path)
+    assert str(ids_path) in str(caught.value)
+    assert isinstance(caught.value.__cause__, UnicodeDecodeError)
+
+
 def test_replay_reads_only_named_files(tmp_path, monkeypatch):
     """Two files, named. Nothing scans the directory and nothing else is read."""
     directory = _directory(tmp_path)

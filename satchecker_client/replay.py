@@ -338,7 +338,11 @@ def _read_replay_ids(path: Path) -> list:
     """
     try:
         text = path.read_text()
-    except OSError as error:
+    except (OSError, UnicodeError) as error:
+        # Decoding is part of reading the file: bytes that are not text are an
+        # unreadable ID list, not a line this can name a number for, and either
+        # way the caller gets the path and the reason rather than a bare
+        # UnicodeDecodeError from inside the reader.
         raise OrbitInputError(
             f"frozen orbit replay could not read {path}: {error}. A replay reads "
             f"only {REPLAY_IDS_FILE} and {REPLAY_RECORDS_FILE} from the "
