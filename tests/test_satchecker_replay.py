@@ -556,6 +556,48 @@ def test_replay_requires_exact_file_alignment(tmp_path, monkeypatch, prepare):
     assert str(directory) in str(caught.value)
 
 
+def test_a_refusal_that_cannot_even_be_revalidated_is_still_an_input_error(tmp_path):
+    """Classifying a refusal must never replace the error being classified.
+
+    The category is decided by validating the record again, permissively, and
+    that goes further into the record than the strict refusal did: a checksum-
+    less line 2 whose mean motion is a finite 1e300 passes the layout and range
+    checks and then overflows in the semimajor-axis arithmetic. That is an
+    ``OverflowError``, not a ``ValueError`` — and escaping, it took the place of
+    the contextual error the caller was owed.
+    """
+    line1, line2 = make_tle(A, TLE_EPOCH)
+    absurd = line2[:52] + " 1.0e+300  " + line2[63:68]
+    assert len(absurd) == 68  # the checked layout, minus the checksum digit
+    directory = _directory(tmp_path)
+    ids_file, records_file = replay_file_names()
+    (directory / ids_file).write_text(f"{A}\n")
+    (directory / records_file).write_text(
+        json.dumps(
+            {
+                "NORAD_CAT_ID": {"0": A},
+                "RECORD_KIND": {"0": "tle"},
+                "TLE_LINE1": {"0": line1},
+                "TLE_LINE2": {"0": absurd},
+            }
+        )
+    )
+
+    for policy in (False, True):
+        with pytest.raises(orbit_input_error()) as caught:
+            load_replay_orbits(directory, allow_missing_checksum=policy)
+        assert caught.value.code == INPUT_INVALID_RECORD
+        assert caught.value.norad_id == A
+
+    # The writer validates permissively and meets the same arithmetic: it must
+    # refuse the record as it refuses any other, before touching a destination.
+    record = {"NORAD_CAT_ID": A, "TLE_LINE1": line1, "TLE_LINE2": absurd}
+    target = tmp_path / "never-written.json"
+    with pytest.raises(ValueError):
+        save_orbits_for_reuse(target, [A], [record])
+    assert not target.exists()
+
+
 @pytest.mark.parametrize(
     "prepare,code",
     [

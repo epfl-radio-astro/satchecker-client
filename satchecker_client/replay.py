@@ -59,6 +59,7 @@ from .resolve import (
     INPUT_STRUCTURE,
     INPUT_UNREADABLE,
     OrbitInputError,
+    _UNUSABLE_RECORD,
     _checked_norad_id,
     _missing,
     _without_null_markers,
@@ -152,7 +153,7 @@ def _replay_record(norad_id: int, record: dict) -> dict:
         record = validated_record(
             _without_null_markers(record), allow_missing_checksum=True
         )
-    except (ValueError, TypeError) as error:
+    except _UNUSABLE_RECORD as error:
         raise ValueError(
             f"the record filed against NORAD {norad_id} cannot be written to a "
             f"replay file: {error}"
@@ -402,16 +403,20 @@ def _refusal_code(record) -> str:
     belong to another satellite is an identity failure under every policy, and
     anything else is the record itself.
     """
+    # ArithmeticError too: the permissive pass reads further into a record than
+    # the refusal being classified did, and an element the range checks accept
+    # can still overflow in the arithmetic behind them. Whatever it raises, the
+    # caller is owed the contextual error, never this function's own.
     try:
         validated_record(record, allow_missing_checksum=True)
-    except (ValueError, TypeError):
+    except _UNUSABLE_RECORD:
         pass
     else:
         return INPUT_CHECKSUM_POLICY
     try:
         embedded = validate_record(record, allow_missing_checksum=True)
         own = norad_id_of(record, "orbit record")
-    except (ValueError, TypeError):
+    except _UNUSABLE_RECORD:
         return INPUT_INVALID_RECORD
     return INPUT_IDENTITY if embedded != own else INPUT_INVALID_RECORD
 
@@ -515,7 +520,7 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                     record, allow_missing_checksum=allow_missing_checksum
                 )
             )
-        except (ValueError, TypeError) as error:
+        except _UNUSABLE_RECORD as error:
             raise OrbitInputError(
                 f"the saved record for NORAD {norad_id} in {records_path} is not "
                 f"acceptable under this run's policy: {error}. A run that "

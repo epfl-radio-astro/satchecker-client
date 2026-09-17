@@ -370,6 +370,14 @@ def _missing(value) -> bool:
     return getattr(result, "ndim", 0) == 0 and bool(result)
 
 
+#: What canonical validation raises for a record that cannot be used. The
+#: arithmetic errors are there because the range checks admit elements the
+#: arithmetic behind them cannot take — a finite mean motion of 1e300 passes and
+#: then overflows in the semimajor axis — and a record like that is unusable, not
+#: a crash: it must be refused the way any other invalid record is.
+_UNUSABLE_RECORD = (KeyError, ValueError, TypeError, ArithmeticError)
+
+
 def _without_null_markers(row) -> dict:
     """A copy of *row* with a null kind or checksum-status cell removed.
 
@@ -1146,7 +1154,7 @@ class _Resolution:
                     allow_missing_checksum=self.allow_missing_checksum,
                 )
                 epoch_jd = record_epoch_jd(record)
-            except (KeyError, ValueError, TypeError) as error:
+            except _UNUSABLE_RECORD as error:
                 self.reject_invalid(norad_id, source, endpoint, provider, error)
                 continue
             offered.setdefault(norad_id, []).append(
@@ -1338,7 +1346,7 @@ class _Resolution:
                 record = validated_record(
                     _without_null_markers(row), allow_missing_checksum=True
                 )
-            except (KeyError, ValueError, TypeError):
+            except _UNUSABLE_RECORD:
                 withheld += 1
                 continue
             if record.get(CHECKSUM_STATUS_FIELD) == CHECKSUM_UNVERIFIED_MISSING:
