@@ -521,14 +521,25 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
                 )
             )
         except _UNUSABLE_RECORD as error:
-            raise OrbitInputError(
+            code = _refusal_code(record)
+            message = (
                 f"the saved record for NORAD {norad_id} in {records_path} is not "
-                f"acceptable under this run's policy: {error}. A run that "
-                "accepted TLE lines without their checksum digits has to say so "
-                "again to replay them: allow_missing_checksum=True.",
+                f"acceptable under this run's policy: {error}."
+            )
+            if code == INPUT_CHECKSUM_POLICY:
+                # The one refusal the opt-in lifts, so the only one that names
+                # it: offered against a corrupt checksum it sends the user to
+                # try something that refuses the record just the same.
+                message += (
+                    " A run that accepted TLE lines without their checksum "
+                    "digits has to say so again to replay them: "
+                    "allow_missing_checksum=True."
+                )
+            raise OrbitInputError(
+                message,
                 path=records_path,
                 row=row_number,
                 norad_id=norad_id,
-                code=_refusal_code(record),
+                code=code,
             ) from error
     return norad_ids, records

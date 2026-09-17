@@ -556,6 +556,48 @@ def test_replay_requires_exact_file_alignment(tmp_path, monkeypatch, prepare):
     assert str(directory) in str(caught.value)
 
 
+def test_the_opt_in_is_mentioned_only_by_the_refusal_it_lifts(tmp_path):
+    """Advice that cannot help is worse than none: it sends the user to try it.
+
+    Every refused record used to end with the sentence about replaying with
+    ``allow_missing_checksum=True`` — a corrupt checksum included, which that
+    option does not accept either. Only the refusal classified
+    ``checksum_policy`` is one the option lifts, so only that one says so.
+    """
+    advice = "allow_missing_checksum=True"
+
+    unverified = _directory(tmp_path, "unverified")
+    stripped = make_tle_record(
+        A, jd(2017, 5, 14), TLE_LINE1=NO_CHECKSUM_PAIR[0], TLE_LINE2=NO_CHECKSUM_PAIR[1]
+    )
+    save_replay_orbits(unverified, [A], [stripped])
+    with pytest.raises(orbit_input_error()) as caught:
+        load_replay_orbits(unverified, allow_missing_checksum=False)
+    assert caught.value.code == INPUT_CHECKSUM_POLICY
+    assert advice in str(caught.value)
+
+    corrupt = _directory(tmp_path, "corrupt")
+    ids_file, records_file = replay_file_names()
+    line1, line2 = make_tle(A, TLE_EPOCH)
+    wrong = line1[:-1] + str((int(line1[-1]) + 1) % 10)
+    (corrupt / ids_file).write_text(f"{A}\n")
+    (corrupt / records_file).write_text(
+        json.dumps(
+            {
+                "NORAD_CAT_ID": {"0": A},
+                "RECORD_KIND": {"0": "tle"},
+                "TLE_LINE1": {"0": wrong},
+                "TLE_LINE2": {"0": line2},
+            }
+        )
+    )
+    for policy in (False, True):
+        with pytest.raises(orbit_input_error()) as caught:
+            load_replay_orbits(corrupt, allow_missing_checksum=policy)
+        assert caught.value.code == INPUT_INVALID_RECORD
+        assert advice not in str(caught.value)
+
+
 def test_a_refusal_that_cannot_even_be_revalidated_is_still_an_input_error(tmp_path):
     """Classifying a refusal must never replace the error being classified.
 
