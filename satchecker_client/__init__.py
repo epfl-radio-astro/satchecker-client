@@ -22,6 +22,7 @@ The names most callers need are re-exported here.
 """
 
 from ._version import __version__
+from ._time import datetime_to_jd, jd_to_datetime
 from .client import (
     BASE_URL,
     HANDOVER_JD,
@@ -69,6 +70,8 @@ from .service import (
 )
 
 __all__ = [
+    "datetime_to_jd",
+    "jd_to_datetime",
     "__version__",
     "BASE_URL",
     "HANDOVER_JD",

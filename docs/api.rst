@@ -42,6 +42,18 @@ provenance stated.
 .. automodule:: satchecker_client.records
     :members:
 
+Time
+----
+
+The UTC Julian-date conversions every epoch in this package is stated in. A
+caller that keeps records or compares their epochs against its own clock uses
+these rather than a second convention that agrees to the second and not the
+millisecond.
+
+.. autofunction:: satchecker_client.datetime_to_jd
+
+.. autofunction:: satchecker_client.jd_to_datetime
+
 TLE parsing
 -----------
 

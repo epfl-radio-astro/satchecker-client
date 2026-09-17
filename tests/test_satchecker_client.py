@@ -719,3 +719,27 @@ class TestSearchSatellites:
         assert list(frame.columns) == client.SEARCH_COLUMNS
         assert pd.isna(frame.loc[0, "DECAY_DATE"])
 
+
+class TestTimeConversions:
+    def test_the_julian_date_conversions_are_public(self):
+        """Callers compare record epochs against their own clock with the same
+        convention the package used to state them, so it is exported."""
+        import satchecker_client as sc
+
+        assert sc.jd_to_datetime is sc._time.jd_to_datetime
+        assert sc.datetime_to_jd is sc._time.datetime_to_jd
+        assert {"jd_to_datetime", "datetime_to_jd"} <= set(sc.__all__)
+
+    def test_a_julian_date_round_trips_through_a_naive_utc_datetime(self):
+        import satchecker_client as sc
+        from datetime import datetime, timezone
+
+        stamp = datetime(2023, 2, 24, 13, 44, 58, 123000)
+        jd_value = sc.datetime_to_jd(stamp)
+        # A Julian Date near 2.46e6 has ~40 us of double resolution, so the
+        # round trip is exact to well under a millisecond, not to the microsecond.
+        assert abs((sc.jd_to_datetime(jd_value) - stamp).total_seconds()) < 1e-4
+        assert sc.jd_to_datetime(2460000.0) == datetime(2023, 2, 24, 12)
+        # An aware datetime is read in UTC and comes back naive.
+        aware = stamp.replace(tzinfo=timezone.utc)
+        assert sc.datetime_to_jd(aware) == jd_value
