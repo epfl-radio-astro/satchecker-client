@@ -13,12 +13,9 @@ consumers happen to configure today, but they are this suite's choices, not
 defaults the client installs — the whole point of the interface is that it has
 none.
 
-The module-level names of the new API are reached through the small accessors
-below rather than imported at the top of each test module. That is deliberate
-while the API is unwritten: a top-level import would abort collection of a whole
-file, when what a test-first suite should produce is one failure per unmet
-promise. IMPLEMENTER: once :mod:`satchecker_client.resolve` and
-:mod:`satchecker_client.replay` exist, hoist these to ordinary imports.
+The new API is imported at the top, like everything else; the two accessors
+below hand back the modules themselves, for the tests that patch a name on one
+or check a signature.
 """
 
 from __future__ import annotations
@@ -27,58 +24,47 @@ import threading
 
 import pandas as pd
 
+import satchecker_client.replay as replay
+import satchecker_client.resolve as resolve
 from satchecker_client.records import KIND_TLE
+from satchecker_client.replay import (  # noqa: F401  re-exported for the tests
+    REPLAY_IDS_FILE,
+    REPLAY_RECORDS_FILE,
+    load_replay_orbits,
+    save_orbits_for_reuse,
+    save_replay_orbits,
+)
+from satchecker_client.resolve import (  # noqa: F401  re-exported for the tests
+    OrbitInputError,
+    read_extra_orbit_dir,
+    resolve_orbits,
+)
 
 from .tle_helpers import make_catalogue_df, make_omm_catalogue_df, make_record
 
 
 # ---------------------------------------------------------------------------
-# Lazy access to the API under construction
+# The modules themselves, for patching and introspection
 # ---------------------------------------------------------------------------
 
 def resolve_module():
-    """:mod:`satchecker_client.resolve`, imported on use."""
-    import satchecker_client.resolve as module
-
-    return module
+    """:mod:`satchecker_client.resolve`."""
+    return resolve
 
 
 def replay_module():
-    """:mod:`satchecker_client.replay`, imported on use."""
-    import satchecker_client.replay as module
-
-    return module
-
-
-def resolve_orbits(*args, **kwargs):
-    return resolve_module().resolve_orbits(*args, **kwargs)
-
-
-def read_extra_orbit_dir(*args, **kwargs):
-    return resolve_module().read_extra_orbit_dir(*args, **kwargs)
+    """:mod:`satchecker_client.replay`."""
+    return replay
 
 
 def orbit_input_error():
     """The :class:`OrbitInputError` class, for ``pytest.raises``."""
-    return resolve_module().OrbitInputError
-
-
-def save_orbits_for_reuse(*args, **kwargs):
-    return replay_module().save_orbits_for_reuse(*args, **kwargs)
-
-
-def save_replay_orbits(*args, **kwargs):
-    return replay_module().save_replay_orbits(*args, **kwargs)
-
-
-def load_replay_orbits(*args, **kwargs):
-    return replay_module().load_replay_orbits(*args, **kwargs)
+    return OrbitInputError
 
 
 def replay_file_names() -> tuple[str, str]:
     """``(REPLAY_IDS_FILE, REPLAY_RECORDS_FILE)`` — the two files a pair is."""
-    module = replay_module()
-    return module.REPLAY_IDS_FILE, module.REPLAY_RECORDS_FILE
+    return REPLAY_IDS_FILE, REPLAY_RECORDS_FILE
 
 
 # ---------------------------------------------------------------------------
