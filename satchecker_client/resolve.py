@@ -314,13 +314,17 @@ def _is_boolean(value) -> bool:
 
 
 def _missing(value) -> bool:
-    """True for the several ways a cell can be absent in these frames."""
-    if value is None:
-        return True
-    try:
-        return bool(value != value)  # NaN
-    except (TypeError, ValueError):  # an array, which is present whatever it holds
-        return False
+    """True for the several ways a cell can be absent in these frames.
+
+    There is more than one null and they do not behave alike: ``pd.NA`` answers
+    ``value != value`` with itself and raises when that is read as a boolean, so
+    testing for a NaN by hand takes it for a *value* and hands it on to
+    something that cannot use it. :func:`pandas.isna` knows all of them, and
+    answers element-wise for a cell holding an array — which is present whatever
+    it holds — so only its scalar answer is read.
+    """
+    result = pd.isna(value)
+    return getattr(result, "ndim", 0) == 0 and bool(result)
 
 
 def _checked_bool(value, name: str) -> bool:

@@ -321,6 +321,39 @@ def test_a_boolean_is_never_a_satellite_identity(tmp_path, place, truth):
     assert table.read_text() == "sentinel table"
 
 
+def test_replay_optional_nullable_metadata_becomes_null(tmp_path):
+    """An optional cell that is a pandas null is missing, not unserialisable.
+
+    ``pd.NA`` raises rather than answering a truth test, and reading that as
+    "present" hands it to the serialiser, which refuses it — so a record read
+    out of a nullable frame, as both consumers' readers produce, could not be
+    saved at all.
+    """
+    absent = make_omm(A, OMM_EPOCH, DATA_SOURCE=pd.NA, ECCENTRICITY=0.0066635)
+    present = make_omm(B, OMM_EPOCH, DATA_SOURCE="celestrak")
+    directory = _directory(tmp_path)
+    _, records_path = save_replay_orbits(directory, [A, B], [absent, present])
+
+    payload = json.loads(Path(records_path).read_text())
+    assert payload["DATA_SOURCE"] == {"0": None, "1": "celestrak"}
+
+    _, loaded = load_replay_orbits(directory, allow_missing_checksum=False)
+    assert loaded[0].get("DATA_SOURCE") is None
+    assert loaded[1]["DATA_SOURCE"] == "celestrak"
+    # The elements themselves still make the round trip bit for bit.
+    assert _bits(loaded[0]["ECCENTRICITY"]) == _bits(0.0066635)
+
+    # A required element is still required, whichever null it arrives as, and a
+    # cell that is not a scalar at all is still not a value a record may hold.
+    for unusable in (pd.NA, pd.NaT, None, float("nan"), [1.0]):
+        with pytest.raises((ValueError, TypeError)):
+            save_orbits_for_reuse(
+                directory / "used_orbits.json",
+                [A],
+                [make_omm(A, OMM_EPOCH, MEAN_MOTION=unusable)],
+            )
+
+
 def test_single_table_duplicates_and_frozen_pair_uniqueness(tmp_path):
     """The single table may repeat a satellite; a frozen pair may not."""
     first = make_tle_record(A, TLE_EPOCH)
