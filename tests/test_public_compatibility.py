@@ -23,7 +23,15 @@ import pytest
 
 import satchecker_client as sc
 from satchecker_client import cache as cache_module
-from satchecker_client import catalogue, client, records, service, tle_parse, _time
+from satchecker_client import (
+    catalogue,
+    client,
+    records,
+    service,
+    tle_parse,
+    _time,
+    _version,
+)
 from satchecker_client.cache import (
     SCHEMA_VERSION,
     SEARCH_SCHEMA_VERSION,
@@ -107,6 +115,55 @@ EXPORT_HOMES = {
     "catalogue": catalogue,
     "tle_parse": tle_parse,
     "_time": _time,
+    "_version": _version,
+}
+
+#: Which module defines each export, as of ``06dcbf5``. The signatures above
+#: are checked on the defining modules and the names on the package; without
+#: this the two could drift, and a package-level name rebound to something else
+#: would satisfy both.
+DEFINED_IN_AT_06DCBF5 = {
+    "datetime_to_jd": "_time",
+    "jd_to_datetime": "_time",
+    "__version__": "_version",
+    "BASE_URL": "client",
+    "HANDOVER_JD": "client",
+    "OMM_COLUMNS": "client",
+    "SEARCH_COLUMNS": "client",
+    "TLE_COLUMNS": "client",
+    "fetch_nearest_omm": "client",
+    "nearest_endpoints_for": "service",
+    "SatCheckerError": "client",
+    "SatCheckerRateLimitError": "client",
+    "SatCheckerResponseError": "client",
+    "SatCheckerTransportError": "client",
+    "fetch_nearest_tle": "client",
+    "search_satellites": "client",
+    "set_client_identifier": "client",
+    "user_agent": "client",
+    "CANDIDATE_COLUMNS": "catalogue",
+    "in_orbit_candidates": "catalogue",
+    "CacheValidationError": "cache",
+    "SearchSnapshot": "cache",
+    "TextOrbitCache": "cache",
+    "read_legacy_tle_records": "cache",
+    "read_orbit_file": "cache",
+    "CHECKSUM_STATUS_FIELD": "records",
+    "CHECKSUM_UNVERIFIED_MISSING": "records",
+    "CHECKSUM_VERIFIED": "records",
+    "KIND_OMM": "records",
+    "KIND_TLE": "records",
+    "KIND_FIELD": "records",
+    "RecordKindError": "records",
+    "record_elements": "records",
+    "record_epoch_jd": "records",
+    "record_kind": "records",
+    "validate_record": "records",
+    "validated_record": "records",
+    "MAX_WORKERS": "service",
+    "NearestBatchResult": "service",
+    "fetch_nearest_batch": "service",
+    "store_or_warn": "service",
 }
 
 #: ``module.qualname`` -> the parameter list as of ``06dcbf5``.
@@ -282,6 +339,13 @@ def test_existing_public_exports_and_signatures_are_preserved():
         inspect.signature(fetch_nearest_batch).parameters["fetch_nearest"].default
         is client.fetch_nearest_tle
     )
+
+
+def test_existing_exports_are_the_objects_their_modules_define():
+    """Every old package name is its defining module's object, by identity."""
+    assert set(DEFINED_IN_AT_06DCBF5) == set(EXPORTS_AT_06DCBF5)
+    for name, module_name in DEFINED_IN_AT_06DCBF5.items():
+        assert getattr(sc, name) is getattr(EXPORT_HOMES[module_name], name), name
 
 
 def test_existing_public_constants_are_preserved():

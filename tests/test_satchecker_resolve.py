@@ -1002,6 +1002,35 @@ def test_attempts_are_recorded_in_endpoint_order(tmp_path):
     assert second.requested == []
 
 
+def test_a_cache_hit_still_records_an_attempt_per_endpoint(tmp_path):
+    """Nothing was asked, and the result says so of each endpoint by name.
+
+    "Not asked" against "asked and had nothing" is the distinction attempts
+    exist for, so a satellite the cache answered for is a row of ``not_sent``,
+    not a missing entry that could be read either way.
+    """
+    cache = _cache(tmp_path)
+    cache.store(A, frame_of(KIND_TLE, [(A, OBS - 0.25)]))
+    first, second = ForbiddenEndpoint("first"), ForbiddenEndpoint("second")
+
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(
+            source_order=(GROUP_REMOTE,),
+            cache=cache,
+            cache_reuse_max_age_days=1.0,
+            endpoints=(first.pair, second.pair),
+        ),
+    )
+
+    assert resolution.resolved[A].source == SOURCE_CACHE
+    assert [
+        (attempt.endpoint, attempt.status) for attempt in resolution.attempts[A]
+    ] == [("first", ATTEMPT_NOT_SENT), ("second", ATTEMPT_NOT_SENT)]
+
+
 def test_the_result_states_the_policy_it_was_run_under():
     resolution = resolve_orbits(
         [],

@@ -27,7 +27,11 @@ from satchecker_client.client import (
     SatCheckerResponseError,
     SatCheckerTransportError,
 )
-from satchecker_client.records import KIND_TLE
+from satchecker_client.records import (
+    CHECKSUM_STATUS_FIELD,
+    CHECKSUM_UNVERIFIED_MISSING,
+    KIND_TLE,
+)
 from satchecker_client.service import (
     RESPONSE_WALL_THRESHOLD,
     NearestBatchResult,
@@ -363,6 +367,90 @@ def test_best_rejection_retains_offset_and_its_own_ceiling():
     assert any(
         event.source == SOURCE_EXTRA for event in resolution.events if A in event.norad_ids
     )
+
+
+def test_a_resolver_only_validation_failure_is_a_response_error(monkeypatch):
+    """Rows came back, and none of them passed *this* layer's policy.
+
+    The batch validated them against the policy it was given, which does not
+    read the provenance field at all, so its own result is a successful,
+    non-empty answer with no failure in it. Passing that on as emptiness would
+    report a satellite the archive plainly has as one it does not — so the
+    resolver files its own refusal, and leaves the batch's account of what the
+    service said exactly as it found it.
+    """
+    carried = frame_of(
+        KIND_TLE,
+        [(A, OBS - 0.5)],
+        **{CHECKSUM_STATUS_FIELD: CHECKSUM_UNVERIFIED_MISSING},
+    )
+    served = []
+    real_batch = service.fetch_nearest_batch
+
+    def spy(norad_ids, epoch_jd, **kwargs):
+        served.append(real_batch(norad_ids, epoch_jd, **kwargs))
+        return served[-1]
+
+    monkeypatch.setattr(service, "fetch_nearest_batch", spy)
+
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **_quiet(
+            endpoints=(StubEndpoint("first", answers={A: carried}).pair,),
+            fallback=False,
+            allow_missing_checksum=False,
+        ),
+    )
+
+    error = resolution.service_errors[A]
+    assert isinstance(error, SatCheckerResponseError)
+    assert "first" in str(error)
+    assert A not in resolution.unavailable and A not in resolution.resolved
+    attempt = resolution.attempts[A][0]
+    assert (attempt.status, attempt.error) == (ATTEMPT_ERROR, error)
+
+    (batch,) = served
+    assert batch.errors == {} and batch.outage is None
+    assert batch.records["NORAD_CAT_ID"].tolist() == [A]
+
+
+def test_events_and_callbacks_arrive_on_the_calling_thread(tmp_path):
+    """A callback is the application's code, run where the application called.
+
+    The fetches happen in a bounded pool; delivering events from those threads
+    would make an application's own reporting concurrent without its ever
+    asking for that, and an exception raised in one would never reach the
+    caller.
+    """
+    caller = threading.get_ident()
+    workers = set()
+    delivered = []
+
+    def answer(norad_id, epoch_jd):
+        workers.add(threading.get_ident())
+        time.sleep(0.01)
+        return frame_of(KIND_TLE, [(norad_id, OBS - 0.5)])
+
+    wanted = list(range(41000, 41010))
+    endpoint = StubEndpoint("first", default=answer)
+
+    resolution = resolve_orbits(
+        wanted,
+        OBS,
+        log=lambda _m: None,
+        on_event=lambda event: delivered.append(threading.get_ident()),
+        **_quiet(
+            endpoints=(endpoint.pair,),
+            cache=TextOrbitCache(tmp_path / "cache"),
+            max_workers=5,
+        ),
+    )
+
+    assert resolution.complete
+    assert workers and caller not in workers
+    assert delivered and set(delivered) == {caller}
 
 
 def _documented_report(resolution) -> list:
