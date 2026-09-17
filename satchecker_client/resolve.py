@@ -43,6 +43,7 @@ from .client import SatCheckerError, SatCheckerResponseError
 from .records import (
     CHECKSUM_STATUS_FIELD,
     CHECKSUM_UNVERIFIED_MISSING,
+    KIND_FIELD,
     KIND_OMM,
     KIND_TLE,
     norad_id_of,
@@ -325,6 +326,28 @@ def _missing(value) -> bool:
     """
     result = pd.isna(value)
     return getattr(result, "ndim", 0) == 0 and bool(result)
+
+
+def _without_null_markers(row) -> dict:
+    """A copy of *row* with a null kind or checksum-status cell removed.
+
+    Those two fields say how to read a record rather than being part of one, and
+    a frame holding both kinds widens every row with every column: an OMM row
+    acquires a null ``TLE_CHECKSUM_STATUS``, either kind a null ``RECORD_KIND``.
+    The canonical validator reads ``None`` and NaN there as absent but takes
+    ``pd.NA`` for a value, stringifies it and refuses the record as carrying an
+    unknown status. A null in either is no claim at all, so it is dropped before
+    the record is judged; a status that is actually stated is left to be judged.
+
+    A row taken from a frame with ``to_dict`` has usually had ``pd.NA`` boxed to
+    ``None`` already; a record dict handed straight to the replay writers has
+    not, which is where this matters.
+    """
+    record = row.to_dict() if hasattr(row, "to_dict") else dict(row)
+    for field in (KIND_FIELD, CHECKSUM_STATUS_FIELD):
+        if field in record and _missing(record[field]):
+            del record[field]
+    return record
 
 
 def _checked_bool(value, name: str) -> bool:
@@ -1075,7 +1098,8 @@ class _Resolution:
             provider = None if _missing(row.get("DATA_SOURCE")) else row["DATA_SOURCE"]
             try:
                 record = validated_record(
-                    row, allow_missing_checksum=self.allow_missing_checksum
+                    _without_null_markers(row),
+                    allow_missing_checksum=self.allow_missing_checksum,
                 )
                 epoch_jd = record_epoch_jd(record)
             except (KeyError, ValueError, TypeError) as error:
@@ -1266,7 +1290,9 @@ class _Resolution:
         withheld = 0
         for row in rows.to_dict(orient="records"):
             try:
-                record = validated_record(row, allow_missing_checksum=True)
+                record = validated_record(
+                    _without_null_markers(row), allow_missing_checksum=True
+                )
             except (KeyError, ValueError, TypeError):
                 withheld += 1
                 continue

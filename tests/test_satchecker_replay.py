@@ -354,6 +354,40 @@ def test_replay_optional_nullable_metadata_becomes_null(tmp_path):
             )
 
 
+@pytest.mark.parametrize("null", [pd.NA, None, float("nan")], ids=["pd.NA", "None", "nan"])
+def test_a_null_kind_or_status_cell_is_a_widened_frame_not_a_claim(tmp_path, null):
+    """A null in a field that says how to read a record is no field at all.
+
+    A frame holding both kinds gives every row every column, so an OMM row
+    carries a null ``TLE_CHECKSUM_STATUS`` and either kind may carry a null
+    ``RECORD_KIND``. ``pd.NA`` reaches the canonical validator as the string
+    ``"<NA>"`` and is refused there as an unknown status — for an OMM, which has
+    no status at all — so valid records from a nullable frame could not be saved.
+    """
+    omm = make_omm(A, OMM_EPOCH, ECCENTRICITY=0.0066635)
+    omm["TLE_CHECKSUM_STATUS"] = null
+    tle = make_tle_record(B, TLE_EPOCH)
+    tle["TLE_CHECKSUM_STATUS"] = null
+    tle["RECORD_KIND"] = null
+
+    path = tmp_path / "used_orbits.json"
+    save_orbits_for_reuse(path, [A, B], [omm, tle])
+    directory = _directory(tmp_path)
+    save_replay_orbits(directory, [A, B], [omm, tle])
+
+    _, loaded = load_replay_orbits(directory, allow_missing_checksum=False)
+    assert "TLE_CHECKSUM_STATUS" not in loaded[0]
+    assert _bits(loaded[0]["ECCENTRICITY"]) == _bits(0.0066635)
+    # The TLE said nothing about its checksums, and they verify: that is what
+    # it is recorded as, not as whatever the null stringified to.
+    assert loaded[1]["TLE_CHECKSUM_STATUS"] == "verified"
+
+    # A status that is actually stated and unknown is still refused.
+    claimed = dict(make_tle_record(B, TLE_EPOCH), TLE_CHECKSUM_STATUS="probably-fine")
+    with pytest.raises(ValueError):
+        save_orbits_for_reuse(path, [B], [claimed])
+
+
 def test_single_table_duplicates_and_frozen_pair_uniqueness(tmp_path):
     """The single table may repeat a satellite; a frozen pair may not."""
     first = make_tle_record(A, TLE_EPOCH)

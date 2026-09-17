@@ -50,7 +50,12 @@ from .records import (
     record_kind,
     validated_record,
 )
-from .resolve import OrbitInputError, _checked_norad_id, _missing
+from .resolve import (
+    OrbitInputError,
+    _checked_norad_id,
+    _missing,
+    _without_null_markers,
+)
 
 
 __all__ = [
@@ -137,7 +142,9 @@ def _replay_record(norad_id: int, record: dict) -> dict:
     launders nothing: the reader applies its own policy to it.
     """
     try:
-        record = validated_record(record, allow_missing_checksum=True)
+        record = validated_record(
+            _without_null_markers(record), allow_missing_checksum=True
+        )
     except (ValueError, TypeError) as error:
         raise ValueError(
             f"the record filed against NORAD {norad_id} cannot be written to a "
@@ -464,7 +471,10 @@ def load_replay_orbits(directory, *, allow_missing_checksum) -> tuple:
         row_number, row = saved[0]
         try:
             records.append(
-                validated_record(row, allow_missing_checksum=allow_missing_checksum)
+                validated_record(
+                    _without_null_markers(row),
+                    allow_missing_checksum=allow_missing_checksum,
+                )
             )
         except (ValueError, TypeError) as error:
             raise OrbitInputError(

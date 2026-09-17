@@ -540,6 +540,45 @@ def test_strict_policy_rejects_carried_unverified_after_rechecksum(tmp_path):
     assert accepted["TLE_LINE1"] == line1
 
 
+def test_a_nullable_frame_does_not_turn_an_omm_into_an_unknown_status(monkeypatch):
+    """The same widened-frame null, on the way *in*: an OMM row of a nullable frame.
+
+    A guard rather than a regression: on current pandas ``to_dict(orient=
+    "records")`` boxes ``pd.NA`` to ``None`` before the resolver sees the row, so
+    this passed before the null-marker handling existed. It pins that a frame
+    built from nullable sources — where the TLE-only column of an OMM row is
+    ``pd.NA`` — resolves, instead of the OMM being refused as carrying an unknown
+    checksum status and the run going to the service for it. The record-dict
+    route, which does not box, is pinned in the replay tests.
+    """
+    forbid_acquisition(monkeypatch)
+    frame = pd.DataFrame(
+        [
+            dict(make_tle_record(B, OBS - 0.25), TLE_CHECKSUM_STATUS="verified"),
+            make_omm(A, OBS - 0.5, DATA_SOURCE="spacetrack"),
+        ]
+    )
+    frame["TLE_CHECKSUM_STATUS"] = frame["TLE_CHECKSUM_STATUS"].astype(object)
+    frame.loc[1, "TLE_CHECKSUM_STATUS"] = pd.NA
+    assert frame.loc[1, "TLE_CHECKSUM_STATUS"] is pd.NA
+
+    resolution = resolve_orbits(
+        [A, B],
+        OBS,
+        log=lambda _m: None,
+        **policy(
+            source_order=(GROUP_EXTRA,),
+            extra_orbit_max_age_days=None,
+            endpoints=(ForbiddenEndpoint().pair,),
+        ),
+        extra_records=frame,
+    )
+
+    assert resolution.complete
+    assert CHECKSUM_STATUS_FIELD not in resolution.resolved[A].record
+    assert resolution.resolved[B].record[CHECKSUM_STATUS_FIELD] == "verified"
+
+
 def test_omm_gets_no_checksum_claim(monkeypatch):
     """OMM has no checksum, so there is no claim to make about one."""
     forbid_acquisition(monkeypatch)
