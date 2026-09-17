@@ -526,6 +526,21 @@ class TestStrictNearestResponses:
             fetch(25544, EPOCH, strict_response=True)
 
 
+def _rows_in_second_envelope() -> bytes:
+    """A list whose first envelope is empty and whose second carries the rows."""
+    first = json.loads(make_nearest_json([(25544, EPOCH)]))
+    envelope = first[0] if isinstance(first, list) else first
+    return json.dumps([{"orbital_data": []}, envelope]).encode()
+
+
+def _error_beside_rows() -> bytes:
+    """A valid reply that also carries an ``error`` field."""
+    payload = json.loads(make_nearest_json([(25544, EPOCH)]))
+    envelope = payload[0] if isinstance(payload, list) else payload
+    envelope["error"] = "unavailable"
+    return json.dumps(payload).encode()
+
+
 class TestDefaultNearestContract:
     """What the two endpoints do when nobody opts in — tabascal's contract.
 
@@ -550,12 +565,17 @@ class TestDefaultNearestContract:
             (fetch_nearest_omm, json.dumps({"error": "unavailable"}).encode(), []),
             (fetch_nearest_tle, json.dumps({}).encode(), []),
             (fetch_nearest_tle, json.dumps({"orbital_data": None}).encode(), []),
+            # Only the first envelope of a list is read, whatever the rest hold,
+            # and an error field beside valid rows is ignored: the rows win.
+            (fetch_nearest_tle, _rows_in_second_envelope(), []),
+            (fetch_nearest_tle, _error_beside_rows(), [25544]),
         ],
         ids=[
             "tle record", "omm record", "tle empty list", "omm empty list",
             "tle empty orbital_data", "omm wrapped empty orbital_data",
             "legacy tle_data", "tle error envelope", "omm error envelope",
             "empty envelope", "null orbital_data",
+            "rows only in second envelope", "error beside valid rows",
         ],
     )
     def test_nearest_default_contract_is_unchanged(

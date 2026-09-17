@@ -630,9 +630,10 @@ def fetch_nearest_tle(
     is used and the rest dropped, and the first data field holding anything wins.
     An error envelope served with HTTP 200, no data field at all and a null one
     therefore come back as an empty frame, indistinguishable from the service
-    saying it has no such record — and an error envelope or a further envelope
-    that does carry rows comes back as those rows, with nothing said about what
-    was ignored beside them. Pass true and each of those replies raises
+    saying it has no such record — while an error-bearing first envelope that
+    also carries valid rows returns those rows, with nothing said about the
+    error beside them, and any envelope after the first is ignored whatever it
+    holds. Pass true and each of those replies raises
     :class:`SatCheckerResponseError` naming the endpoint, while the documented
     empty forms stay empty frames.
     """
