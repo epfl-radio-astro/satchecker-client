@@ -612,7 +612,12 @@ def _checked_identities(frame: pd.DataFrame, path: Path) -> pd.DataFrame:
                 row=row_number,
             ) from error
     frame = frame.copy()
-    frame["NORAD_CAT_ID"] = identities
+    # Explicitly ``object``, holding the Python integers just validated. A
+    # column of one ID above the signed 64-bit maximum infers ``uint64`` and one
+    # of ordinary IDs ``int64``; concatenating two such files promotes the
+    # column to floating point, and an ID checked digit for digit comes out of
+    # the concatenation as a different satellite's.
+    frame["NORAD_CAT_ID"] = pd.Series(identities, index=frame.index, dtype=object)
     return frame
 
 

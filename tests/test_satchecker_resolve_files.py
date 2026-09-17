@@ -194,6 +194,37 @@ def test_extra_directory_keeps_a_large_identity_exact(tmp_path):
     assert frame["NORAD_CAT_ID"].tolist() == [huge]
 
 
+def test_extra_directory_preserves_ids_across_signed_unsigned_files(tmp_path):
+    """Two files, two identity ranges, one column, still the exact integers.
+
+    A file whose only ID is above the signed 64-bit maximum infers ``uint64``
+    and an ordinary one infers ``int64``; concatenating those promotes the
+    column to floating point, and 9223372036854775809 arrives as ...808 — a
+    satellite the resolver then finds no row for, having read one.
+    """
+    huge = 9223372036854775809
+    _write_records(
+        tmp_path / "a.json", [dict(make_omm(A, OBS - 1.0), NORAD_CAT_ID=huge)]
+    )
+    _write_records(tmp_path / "b.json", [make_omm(B, OBS - 1.0)])
+
+    frame = read_extra_orbit_dir(tmp_path)
+    assert frame["NORAD_CAT_ID"].tolist() == [huge, B]
+
+    resolution = resolve_orbits(
+        [huge],
+        OBS,
+        log=lambda _m: None,
+        **policy(
+            source_order=(GROUP_EXTRA,),
+            extra_orbit_max_age_days=None,
+            endpoints=(ForbiddenEndpoint().pair,),
+        ),
+        extra_records=frame,
+    )
+    assert resolution.resolved[huge].record["NORAD_CAT_ID"] == huge
+
+
 def test_extra_reader_does_not_apply_checksum_policy(tmp_path):
     """Reading is not accepting: the lines come back as written, policy comes later."""
     epoch = tle_epoch_jd(NO_CHECKSUM_PAIR[0])
