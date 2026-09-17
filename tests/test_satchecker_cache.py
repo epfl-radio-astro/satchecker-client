@@ -919,6 +919,79 @@ def test_read_orbit_file_refuses_a_number_that_overflows_to_infinity(tmp_path, t
     assert str(path) in str(caught.value)
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"NORAD_CAT_ID": {"0": 25544}, "NORAD_CAT_ID": {}}',
+        '{"NORAD_CAT_ID": {"0": 25544, "0": 43013}}',
+        '[{"NORAD_CAT_ID": 25544, "NORAD_CAT_ID": 43013}]',
+    ],
+    ids=["column repeated, populated then empty", "row key repeated", "record field repeated"],
+)
+def test_read_orbit_file_refuses_a_member_name_that_repeats(tmp_path, text):
+    """``json`` keeps the last of two same-named members and says nothing.
+
+    Left to that, a populated column followed by an empty one reads as an empty
+    table and a repeated row index keeps one of its rows: records lost before
+    any validation could see them. A file that names one thing twice is not
+    unambiguous enough to read.
+    """
+    path = tmp_path / "used_orbits.json"
+    path.write_text(text)
+
+    with pytest.raises(CacheValidationError) as caught:
+        read_orbit_file(path)
+    assert str(path) in str(caught.value)
+    assert "more than once" in str(caught.value)
+
+
+def test_read_orbit_file_keeps_a_large_integer_exact(tmp_path):
+    # An integer token is never routed through the float parser: it stays the
+    # exact Python integer, which is the contract the docstring states.
+    path = tmp_path / "used_orbits.json"
+    path.write_text('[{"NORAD_CAT_ID": 25544, "FETCHED_AT_NS": 1750000000000000001}]')
+
+    frame = read_orbit_file(path)
+    cell = frame.loc[0, "FETCHED_AT_NS"]
+    assert isinstance(cell, int) and cell == 1750000000000000001
+
+
+def test_a_read_orbit_file_row_validates_as_its_own_kind(tmp_path):
+    """The reader's rows are what ``validated_record`` is handed, mixed kinds and all.
+
+    A replay file spanning the archive handover holds both kinds, so every row
+    carries every column, null where the other kind's fields are. Each row must
+    still resolve as its own kind through the reader's ``object`` columns, and
+    the archive's stray backslash must still come off a line read from a file.
+    """
+    from satchecker_client.records import KIND_OMM, KIND_TLE, validated_record
+
+    omm = make_omm(43013, EPOCH, ECCENTRICITY=0.0066635)
+    rows = [
+        {
+            "NORAD_CAT_ID": 26867,
+            "TLE_LINE1": STRAY_BACKSLASH_PAIR[0],
+            "TLE_LINE2": STRAY_BACKSLASH_PAIR[1],
+            "DATA_SOURCE": "spacetrack",
+        },
+        omm,
+    ]
+    path = tmp_path / "used_orbits.json"
+    path.write_text(json.dumps(rows))
+
+    frame = read_orbit_file(path)
+    tle = validated_record(frame.loc[0])
+    assert tle["RECORD_KIND"] == KIND_TLE
+    assert tle["NORAD_CAT_ID"] == 26867
+    assert tle["TLE_LINE1"] == STRAY_BACKSLASH_PAIR[0][:-1]
+    assert tle["TLE_CHECKSUM_STATUS"] == "verified"
+    read_omm = validated_record(frame.loc[1])
+    assert read_omm["RECORD_KIND"] == KIND_OMM
+    assert read_omm["NORAD_CAT_ID"] == 43013
+    assert read_omm["ECCENTRICITY"] == 0.0066635
+    assert "TLE_CHECKSUM_STATUS" not in read_omm
+
+
 def test_read_orbit_file_names_the_file_it_could_not_decode(tmp_path):
     """Bytes that are not text are malformed content, named as such.
 

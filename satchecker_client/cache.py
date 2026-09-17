@@ -695,6 +695,22 @@ def _reject_nonfinite(literal: str):
     raise ValueError(f"{literal} is not a number an orbit record may hold")
 
 
+def _unique_members(pairs) -> dict:
+    """Build one JSON object, refusing a member name that appears twice.
+
+    ``json`` keeps the last of two members with one name and says nothing, so a
+    table whose ``NORAD_CAT_ID`` column appears once populated and once empty
+    reads as the empty one, and a row index repeated within a column keeps one
+    of its values. Nothing about such a file is unambiguous enough to read.
+    """
+    members: dict = {}
+    for key, value in pairs:
+        if key in members:
+            raise ValueError(f"member {key!r} appears more than once in one object")
+        members[key] = value
+    return members
+
+
 def _checked_float(literal: str) -> float:
     """Convert one JSON number, refusing an exponent that has overflowed.
 
@@ -719,9 +735,10 @@ def read_orbit_file(path) -> pd.DataFrame:
     positionally indexed DataFrame, values and every column preserved:
     provenance columns such as ``FETCHED_AT`` and
     :data:`~satchecker_client.records.CHECKSUM_STATUS_FIELD` survive, and each
-    number is the double that was written, subnormals and ``-0.0`` included,
-    because the standard library's JSON parser is correctly rounded and nothing
-    here re-infers a value.
+    number is what was written: an integer token stays an exact Python integer
+    (up to Python's configured integer-conversion limit), and a decimal or
+    exponent token is the correctly rounded double, subnormals and ``-0.0`` included, because that is what the standard
+    library's JSON parser produces and nothing here re-infers a value.
 
     Nothing re-infers one because the columns are ``object``, holding the values
     the JSON parser produced. Inferring one type per column is what silently
@@ -755,8 +772,9 @@ def read_orbit_file(path) -> pd.DataFrame:
     their contract.
 
     Raises :class:`CacheValidationError`, naming the path, for content that is
-    not a readable orbit table — undecodable bytes, broken JSON, a number with no
-    double, a shape that is not one of the two; ``OSError`` for a file that
+    not a readable orbit table — undecodable bytes, broken JSON, a member name
+    repeated within one object, a decimal or exponent token with no double, a
+    shape that is not one of the two; ``OSError`` for a file that
     cannot be read at all. Neither *failure* is ever an empty frame, which would
     let an unreadable file fall through to another source and leave the run
     looking like one where the satellite simply had no record. A table that is
@@ -775,7 +793,10 @@ def read_orbit_file(path) -> pd.DataFrame:
         ) from error
     try:
         payload = json.loads(
-            text, parse_constant=_reject_nonfinite, parse_float=_checked_float
+            text,
+            object_pairs_hook=_unique_members,
+            parse_constant=_reject_nonfinite,
+            parse_float=_checked_float,
         )
     except ValueError as error:
         raise CacheValidationError(
