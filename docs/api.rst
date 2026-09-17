@@ -80,10 +80,13 @@ with the source and signed offset that chose them
 (:class:`~satchecker_client.resolve.ResolvedOrbit`), the nearest near-miss with
 the parameter that refused it
 (:class:`~satchecker_client.resolve.RejectedOrbit`), one
-:class:`~satchecker_client.resolve.EndpointAttempt` per configured endpoint per
-satellite, the request failures, the satellites nothing was found for and why,
-and a :class:`~satchecker_client.resolve.ResolutionEvent` for each decision. It
-raises only for a malformed rule or identity;
+:class:`~satchecker_client.resolve.EndpointAttempt` per configured endpoint for
+every satellite that entered the remote group, the request failures, the
+satellites nothing was found for and why, and a
+:class:`~satchecker_client.resolve.ResolutionEvent` for each decision. Of its
+own it raises only for a malformed rule or identity — a satellite it could not
+resolve is evidence in the result, not an exception — though an ``on_event``
+callback's own exception propagates through it;
 :class:`~satchecker_client.resolve.OrbitInputError` comes from the strict
 directory reader beside it.
 

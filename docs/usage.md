@@ -507,8 +507,11 @@ resolution = sc.resolve_orbits(
 frame = resolution.frame()   # one row per accepted satellite, in requested order
 ```
 
-Those values are the two consuming applications' current ones. They are not
-recommendations and they are not defaults; pick your own and state them.
+Those ages, the source order and the replacement rule are the two consuming
+applications' current ones; `strict_response` is not, and is shown here at its
+stricter setting — tab-sim asks for it, tabascal currently takes the lenient
+reading the endpoints have always had. None of these are recommendations and
+none are defaults; pick your own and state them.
 
 Each requested ID is resolved independently, through `source_order` in turn:
 `"extra"` is the frame you passed as `extra_records`, `"remote"` is the cache and
@@ -530,11 +533,21 @@ for norad_id in resolution.missing:
     if norad_id in resolution.service_errors:
         raise resolution.service_errors[norad_id]      # we could not find out
     rejected = resolution.rejected.get(norad_id)
-    if rejected is not None:
+    if rejected is not None and rejected.reason_code == "over_age":
         print(f"{norad_id}: nearest record was {rejected.age_days:.2f} d away, "
               f"over {rejected.limit_name}={rejected.ceiling_days}")
-    print(f"{norad_id}: {resolution.unavailable.get(norad_id, 'unknown')}")
+    elif rejected is not None:
+        print(f"{norad_id}: the record found for it was unusable "
+              f"({rejected.reason_code})")
+    if norad_id in resolution.unavailable:
+        print(f"{norad_id}: {resolution.unavailable[norad_id]}")
 ```
+
+A rejection that is not an age rejection has no epoch to report: `age_days`,
+`offset_days`, `ceiling_days` and `limit_name` are all `None` on it, because
+nothing about the record could be measured. And the two maps are not
+alternatives — an ID can appear in neither, either, or both — so each is asked
+about separately.
 
 Four outcomes are kept apart, because flattening them is how a service failure
 becomes a plausible-looking run with a satellite quietly missing from it:
@@ -549,19 +562,26 @@ becomes a plausible-looking run with a satellite quietly missing from it:
 An ID refused on age, one with a service failure, and one whose fallback an
 outage prevented are deliberately *not* in `unavailable`: each already has its
 own evidence, and calling any of them absent would report a satellite the
-archives do have as one they do not. `refresh_errors` holds the failures of IDs
-that stayed resolved anyway — never fatal, since the run has a record, but the
-run is not quite the one that was asked for and this is the only place that says
-so.
+archives do have as one they do not. The exception is `offline`, which is kept
+alongside an age rejection: the ceiling refused the record that was held, and
+nothing was allowed to look for a closer one, and those are two separate things
+to tell a user. `refresh_errors` holds the failures of IDs that stayed resolved
+anyway — never fatal, since the run has a record, but the run is not quite the
+one that was asked for and this is the only place that says so.
 
 `attempts[id]` lists one
 {class}`~satchecker_client.resolve.EndpointAttempt` per configured endpoint, in
-order, with `not_sent` for one that was never asked. `events` is the same facts
-as they happened — {class}`~satchecker_client.resolve.ResolutionEvent`, each
-with a stable `code`, the IDs it concerns, and the source, endpoint, path or
-error behind it. Pass `on_event=` to receive them as they occur; the result keeps
-them either way, so an application that installs no callback is not reading a
-different run. The codes are `candidate_rejected`, `source_selected`,
+order, with `not_sent` for one that was never asked — a cache hit, or an ID an
+earlier source resolved, is therefore a row of `not_sent`s. An ID that never
+reached the remote group at all has no `attempts` entry: nothing was decided
+about asking. `events` is the same facts as they happened —
+{class}`~satchecker_client.resolve.ResolutionEvent`, each with a stable `code`,
+the IDs it concerns, and the source, endpoint, path or error behind it. Pass
+`on_event=` to receive them as they occur, from the thread that called
+`resolve_orbits` and never from a worker; an exception your callback raises is
+yours and propagates out of the call. The result keeps the events either way, so
+an application that installs no callback is not reading a different run. The
+codes are `candidate_rejected`, `source_selected`,
 `cache_hit`, `refresh_required`, `refresh_skipped`, `batch_started`,
 `endpoint_fallback`, `outage`, `incumbent_retained`, `refresh_failed`,
 `unverified_accepted`, `unverified_not_cached` and `cache_write_failed`. The

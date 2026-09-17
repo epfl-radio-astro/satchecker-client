@@ -50,12 +50,16 @@ from .resolve_helpers import (
     EVENT_REFRESH_FAILED,
     GROUP_EXTRA,
     GROUP_REMOTE,
+    REASON_INVALID,
     REASON_OVER_AGE,
     SOURCE_CACHE,
     SOURCE_EXTRA,
     SOURCE_SERVICE,
     UNAVAILABLE_ABSENT,
+    UNAVAILABLE_INVALID_LOCAL,
+    UNAVAILABLE_OFFLINE,
     EventLog,
+    ForbiddenEndpoint,
     StubEndpoint,
     extra_frame,
     frame_of,
@@ -359,6 +363,97 @@ def test_best_rejection_retains_offset_and_its_own_ceiling():
     assert any(
         event.source == SOURCE_EXTRA for event in resolution.events if A in event.norad_ids
     )
+
+
+def _documented_report(resolution) -> list:
+    """The outcome-handling loop from ``docs/usage.md``, printing into a list.
+
+    Copied rather than imported: what is being checked is that the example a
+    reader lifts off the page runs against every shape this result takes —
+    including the rejection with nothing measurable in it, which an unbranched
+    ``{age_days:.2f}`` turns into a ``TypeError`` in the caller's error path.
+    """
+    reported = []
+    for norad_id in resolution.missing:
+        if norad_id in resolution.service_errors:
+            raise resolution.service_errors[norad_id]
+        rejected = resolution.rejected.get(norad_id)
+        if rejected is not None and rejected.reason_code == "over_age":
+            reported.append(
+                f"{norad_id}: nearest record was {rejected.age_days:.2f} d away, "
+                f"over {rejected.limit_name}={rejected.ceiling_days}"
+            )
+        elif rejected is not None:
+            reported.append(
+                f"{norad_id}: the record found for it was unusable "
+                f"({rejected.reason_code})"
+            )
+        if norad_id in resolution.unavailable:
+            reported.append(f"{norad_id}: {resolution.unavailable[norad_id]}")
+    return reported
+
+
+def test_the_documented_outcome_report_runs_over_every_outcome(tmp_path):
+    """One accepted record, one refused on age, one unusable, two with nothing."""
+    cache = TextOrbitCache(tmp_path / "cache")
+    cache.store(B, frame_of(KIND_TLE, [(B, OBS - 5.0)]))
+    extra = pd.concat(
+        [extra_frame([(KIND_TLE, A, OBS - 0.5)]), _corrupt_frame(C, OBS - 0.5)],
+        ignore_index=True,
+    )
+
+    offline = resolve_orbits(
+        [A, B, C, D],
+        OBS,
+        log=lambda _m: None,
+        **policy(
+            source_order=(GROUP_EXTRA, GROUP_REMOTE),
+            offline=True,
+            remote_max_age_days=3.0,
+            extra_orbit_max_age_days=3.0,
+            cache=cache,
+            endpoints=(ForbiddenEndpoint("first").pair, ForbiddenEndpoint("second").pair),
+        ),
+        extra_records=extra,
+    )
+
+    assert offline.resolved[A].source == SOURCE_EXTRA
+    assert offline.rejected[B].reason_code == REASON_OVER_AGE
+    assert offline.rejected[C].reason_code == REASON_INVALID
+    # The fact the example has to branch on: nothing about C's record could be
+    # measured, so its rejection carries no age, no offset and no ceiling.
+    assert (offline.rejected[C].age_days, offline.rejected[C].ceiling_days) == (
+        None,
+        None,
+    )
+    assert offline.unavailable[B] == UNAVAILABLE_OFFLINE
+    assert offline.unavailable[C] == UNAVAILABLE_INVALID_LOCAL
+    assert offline.unavailable[D] == UNAVAILABLE_OFFLINE
+
+    assert _documented_report(offline) == [
+        f"{B}: nearest record was 5.00 d away, over remote_max_age_days=3.0",
+        f"{B}: offline",
+        f"{C}: the record found for it was unusable (invalid)",
+        f"{C}: invalid_local",
+        f"{D}: offline",
+    ]
+
+    failed = resolve_orbits(
+        [E],
+        OBS,
+        log=lambda _m: None,
+        **_quiet(
+            endpoints=(
+                StubEndpoint(
+                    "first", answers={E: SatCheckerResponseError("malformed")}
+                ).pair,
+            ),
+            fallback=False,
+        ),
+    )
+    assert E not in failed.unavailable
+    with pytest.raises(SatCheckerResponseError):
+        _documented_report(failed)
 
 
 @pytest.mark.parametrize("strict", [True, False])
