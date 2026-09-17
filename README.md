@@ -30,12 +30,22 @@ needed.
   keeps catalogue search results so name-selected runs can work offline.
 - **Batching** — bounded-concurrency fetches that stop on the first sign the
   service itself is the problem rather than working through the rest of a list.
+- **Resolving** (optional) — one call that picks the record each satellite gets:
+  source precedence per satellite, nearest-epoch selection, cache reuse held
+  apart from the hard age ceiling, fallback to the other archive, and a result
+  that tells an absent satellite from a failed request. Every rule is a required
+  argument; it has no policy of its own.
+- **Replay** (optional) — writing the records a run used and reading them back
+  exactly, as the same doubles and the same lines, from two named files and
+  nothing else.
 
 ## What it does not do
 
 It takes no view on *which* record your observation should use. Source
 precedence, how stale a record may be before it is refused, and whether missing
-coverage is fatal are application policy and stay with the caller.
+coverage is fatal are application policy and stay with the caller — including
+when the resolver above executes them, which is why it requires every one of
+them to be stated and defaults none.
 
 ## Install
 
