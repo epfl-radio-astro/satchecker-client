@@ -529,9 +529,11 @@ def _nearest_rows(payload, endpoint: str, url: str, *, strict: bool):
     data field, both observed, and both readings keep those.
 
     Everything else the two readings disagree about. The default is lenient by
-    history: it takes the first data field holding anything and reads an error
-    envelope served with HTTP 200, a missing data field or a null one as absence
-    too. *strict* separates those — see :func:`_strict_nearest_data`.
+    history: it ignores an ``error`` field, uses the first envelope of a list, and
+    takes the first data field holding anything — so an error envelope served
+    with HTTP 200, a missing data field or a null one reads as absence, and one
+    carrying rows anyway reads as those rows. *strict* separates those — see
+    :func:`_strict_nearest_data`.
     """
     if isinstance(payload, list) and not payload:
         return None  # empty list == no record for this satellite
@@ -623,10 +625,14 @@ def fetch_nearest_tle(
     :class:`SatCheckerResponseError`.
 
     *strict_response* changes which replies are refused, not how an accepted one
-    is read. By default a reply that makes no sense — an error envelope served
-    with HTTP 200, no data field at all, a null one, several envelopes in one
-    list — comes back as an empty frame, indistinguishable from the service
-    saying it has no such record. Pass true and each of those raises
+    is read. By default a reply that makes no sense is read for whatever it
+    appears to hold: an ``error`` field is ignored, the first envelope of a list
+    is used and the rest dropped, and the first data field holding anything wins.
+    An error envelope served with HTTP 200, no data field at all and a null one
+    therefore come back as an empty frame, indistinguishable from the service
+    saying it has no such record — and an error envelope or a further envelope
+    that does carry rows comes back as those rows, with nothing said about what
+    was ignored beside them. Pass true and each of those replies raises
     :class:`SatCheckerResponseError` naming the endpoint, while the documented
     empty forms stay empty frames.
     """
@@ -654,9 +660,10 @@ def fetch_nearest_omm(
     :class:`SatCheckerResponseError`.
 
     *strict_response* is as in :func:`fetch_nearest_tle`: by default a reply that
-    makes no sense reads as the satellite having no record, and passing true
-    raises :class:`SatCheckerResponseError` for it instead, keeping the
-    documented empty forms empty. Distinguishing absence from an outage matters
+    makes no sense reads as whatever it appears to hold — usually as the
+    satellite having no record — and passing true raises
+    :class:`SatCheckerResponseError` for it instead, keeping the documented empty
+    forms empty. Distinguishing absence from an outage matters
     most here, since this archive is also the one that answers a pre-handover
     request with a record years off epoch.
     """

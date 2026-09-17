@@ -354,6 +354,41 @@ class TestValidatedRecord:
         assert result["NORAD_CAT_ID"] == 25544
         assert result["TLE_CHECKSUM_STATUS"] == "verified"
 
+    def test_validated_record_accepts_a_row_of_a_mixed_kind_frame(self):
+        """The shape a run spanning the archive handover actually holds.
+
+        One frame carrying both kinds gives every row every column, so a TLE row
+        arrives with empty OMM elements beside it and an OMM row with empty
+        lines. Each row still has to resolve as its own kind, and the archive's
+        stray trailing backslash still has to come off a line that reached the
+        validator through pandas rather than as a dict.
+        """
+        frame = pd.DataFrame(
+            [
+                make_tle_record(
+                    26867,
+                    jd(2010, 5, 31),
+                    TLE_LINE1=STRAY_BACKSLASH_PAIR[0],
+                    TLE_LINE2=STRAY_BACKSLASH_PAIR[1],
+                ),
+                make_omm(43013, _EPOCH, ECCENTRICITY=0.0066635),
+            ]
+        )
+
+        tle = validated_record(frame.loc[0])
+        assert tle["RECORD_KIND"] == KIND_TLE
+        assert tle["NORAD_CAT_ID"] == 26867
+        assert tle["TLE_LINE1"] == STRAY_BACKSLASH_PAIR[0][:-1]
+        assert tle["TLE_LINE2"] == STRAY_BACKSLASH_PAIR[1]
+        assert tle["TLE_CHECKSUM_STATUS"] == "verified"
+
+        omm = validated_record(frame.loc[1])
+        assert omm["RECORD_KIND"] == KIND_OMM
+        assert omm["NORAD_CAT_ID"] == 43013
+        assert omm["ECCENTRICITY"] == 0.0066635
+        # The empty lines beside it are not a TLE to claim anything about.
+        assert "TLE_CHECKSUM_STATUS" not in omm
+
     @pytest.mark.parametrize(
         "drop", [(1,), (2,), (1, 2)], ids=["line 1", "line 2", "both lines"]
     )

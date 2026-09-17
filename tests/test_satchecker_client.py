@@ -497,6 +497,34 @@ class TestStrictNearestResponses:
         with pytest.raises(SatCheckerResponseError, match="99999"):
             fetch(25544, EPOCH, strict_response=True)
 
+    @_BOTH_NEAREST
+    @pytest.mark.parametrize(
+        "status, expected",
+        [
+            (404, SatCheckerResponseError),
+            (500, SatCheckerTransportError),
+            (429, SatCheckerRateLimitError),
+        ],
+        ids=["404", "500", "429"],
+    )
+    def test_strict_nearest_leaves_transport_failures_as_they_were(
+        self, monkeypatch, fetch, endpoint, status, expected
+    ):
+        """Strict reading is about a body that arrived, and only about that.
+
+        The classification of a reply that never arrived — one satellite's
+        problem, an outage, a rate limit a batch must back off from — is what a
+        caller decides whether to keep asking on, and opting into stricter
+        parsing must not move a failure between those classes.
+        """
+        def fail(*args, **kwargs):
+            raise urllib.error.HTTPError("url", status, "reason", {}, None)
+
+        monkeypatch.setattr(client.urllib.request, "urlopen", fail)
+
+        with pytest.raises(expected, match=f"HTTP {status}"):
+            fetch(25544, EPOCH, strict_response=True)
+
 
 class TestDefaultNearestContract:
     """What the two endpoints do when nobody opts in — tabascal's contract.

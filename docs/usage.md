@@ -82,12 +82,18 @@ Failures are typed, and the distinction matters:
 
 ### Telling absence from an outage
 
-Both fetch functions read a reply leniently by default, and will go on doing so:
-an error envelope served with HTTP 200, a missing data field, a null one, or
-several envelopes in one list all come back as an empty frame — the same answer
-as a satellite the archive genuinely has no record of. For a caller that uses
-whatever records it can get, that is harmless. For one where a missing satellite
-changes the result rather than shortening the list, it is the failure to avoid:
+Both fetch functions read a reply leniently by default, and will go on doing so.
+The default parser ignores an `error` field, reads the first envelope of a list
+and ignores the rest, and takes the first data field holding anything. So a
+reply that makes no sense comes back as whatever it appears to hold: an error
+envelope served with HTTP 200, a missing data field, a null one and a dropped
+second envelope usually leave an empty frame — the same answer as a satellite
+the archive genuinely has no record of — while an error envelope that *also*
+carries rows, or a list whose first envelope does, returns those rows with
+nothing said about the error or the envelopes dropped beside them. For a caller
+that uses whatever records it can get, that is harmless. For one where a missing
+satellite changes the result rather than shortening the list, it is the failure
+to avoid:
 
 ```python
 frame = sc.fetch_nearest_tle(norad_id, epoch_jd, strict_response=True)
@@ -96,13 +102,15 @@ frame = sc.fetch_nearest_tle(norad_id, epoch_jd, strict_response=True)
 `strict_response=True` raises
 {class}`~satchecker_client.client.SatCheckerResponseError` for each of those
 replies instead, naming the endpoint that answered and carrying the service's
-own error text when there is one. It changes nothing else. The documented ways of
-saying "no record for this satellite" — an empty top-level list, an empty
-`orbital_data`, the legacy `tle_data` spelling — still return an empty frame, and
-a good reply normalises to the same values it does by default. Data fields are
-selected by presence rather than by truthiness, which is what makes a null one
-distinguishable from an absent one, and a reply carrying two recognised fields
-that disagree is refused rather than resolved by precedence.
+own error text when there is one. It changes nothing else: a reply that never
+arrived is classified exactly as it was — one satellite's problem, an outage, or
+a rate limit — because that is about the request rather than the body. The
+documented ways of saying "no record for this satellite" — an empty top-level
+list, an empty `orbital_data`, the legacy `tle_data` spelling — still return an
+empty frame, and a good reply normalises to the same values it does by default.
+Data fields are selected by presence rather than by truthiness, which is what
+makes a null one distinguishable from an absent one, and a reply carrying two
+recognised fields that disagree is refused rather than resolved by precedence.
 
 The option is per call and the default is deliberately untouched: a consumer
 that does not ask resolves exactly what it always did.
