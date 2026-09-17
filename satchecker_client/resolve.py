@@ -839,6 +839,10 @@ class _Resolution:
     def from_remote(self, pending: list) -> None:
         self.attempted.update(pending)
         reusable = self.install_incumbents(pending)
+        # A request is suppressed only by a record the ceiling accepted *and*
+        # the reuse threshold covers. Without that intersection, a null reuse
+        # threshold makes every cached record a hit — including ones the ceiling
+        # then refuses — and the satellite is never fetched at all.
         hits = [
             norad_id
             for norad_id in pending
@@ -954,15 +958,9 @@ class _Resolution:
         candidates = self.candidates_of(
             batch.records, set(asked), SOURCE_SERVICE, label
         )
-        answered = (
-            set()
-            if batch.records.empty
-            else {
-                norad_id
-                for norad_id in self.identities(batch.records)
-                if norad_id in set(asked)
-            }
-        )
+        # The IDs rows came back for, which is not the same set as the IDs with
+        # a usable candidate: a row this resolver refuses leaves neither.
+        answered = set(self.identities(batch.records)) & set(asked)
         served: set = set()
         failures = dict(batch.errors)
         for norad_id in asked:
@@ -1025,14 +1023,16 @@ class _Resolution:
 
     # -- candidates --------------------------------------------------------
 
-    def identities(self, frame) -> list:
-        out = []
+    @staticmethod
+    def identities(frame) -> list:
+        """The satellites *frame* has rows for, skipping any row not filed against one."""
+        found = []
         for row in frame.to_dict(orient="records"):
             try:
-                out.append(norad_id_of(row, "record"))
+                found.append(norad_id_of(row, "record"))
             except ValueError:
                 continue
-        return out
+        return found
 
     def candidates_of(self, frame, wanted: set, source: str, endpoint) -> dict:
         """Validated candidates for *wanted*, by satellite, in input order.
