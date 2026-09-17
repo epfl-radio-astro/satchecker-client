@@ -47,7 +47,6 @@ from .records import (
     KIND_OMM,
     KIND_TLE,
     OMM_ELEMENT_COLUMNS,
-    norad_id_of,
     record_kind,
     validated_record,
 )
@@ -107,15 +106,19 @@ _REPLAY_REQUIRED = {
 def _own_norad_id(record):
     """The record's own ``NORAD_CAT_ID``, checked, or ``None`` if it has none.
 
-    Validated rather than cast. ``int(25544.5)`` is 25544, so a lossy repair
-    here lets a record whose identity disagrees with the ID it is filed against
-    pass the alignment check and be written as the satellite it is not. Raises
-    ``ValueError`` for an identity that is present and unusable; only a record
-    with no identity at all returns ``None``.
+    Validated rather than cast, and by the new layer's check rather than the
+    primitive's alone. ``int(25544.5)`` is 25544, so a lossy repair here lets a
+    record whose identity disagrees with the ID it is filed against pass the
+    alignment check and be written as the satellite it is not; and a NumPy
+    boolean, which the primitive is documented as unable to refuse, is a
+    perfectly ordinary ``1``. Raises ``ValueError`` for an identity that is
+    present and unusable; only a record with no identity at all returns
+    ``None``.
     """
-    if _missing(record.get("NORAD_CAT_ID")):
+    value = record.get("NORAD_CAT_ID")
+    if _missing(value):
         return None
-    return norad_id_of(record, "orbit record")
+    return _checked_norad_id(value, "orbit record")
 
 
 def _replay_record(norad_id: int, record: dict) -> dict:

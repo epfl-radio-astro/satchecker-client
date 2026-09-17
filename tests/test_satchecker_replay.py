@@ -286,6 +286,41 @@ def test_save_alignment_and_id_validation(tmp_path):
     assert json.loads(path.read_text()) in ({}, [])
 
 
+@pytest.mark.parametrize("place", ["aligned", "record"])
+@pytest.mark.parametrize(
+    "truth", [True, np.bool_(True)], ids=["Python bool", "NumPy bool"]
+)
+def test_a_boolean_is_never_a_satellite_identity(tmp_path, place, truth):
+    """``True`` is an ``Integral`` equal to 1, and NORAD 1 is a real satellite.
+
+    ``norad_id_of`` refuses a Python boolean and cannot refuse a NumPy one —
+    that guard belongs to this layer — so it has to cover the record's own
+    identity and not only the ID the record is filed against. Repairing either
+    into a catalogue number writes a replay of whichever satellite the repair
+    happened to name.
+    """
+    record = make_omm(1, OMM_EPOCH)
+    norad_ids, records = (
+        ([truth], [record])
+        if place == "aligned"
+        else ([1], [dict(record, NORAD_CAT_ID=truth)])
+    )
+
+    directory = _directory(tmp_path, f"boolean-{place}-{type(truth).__name__}")
+    ids_path, records_path = _write_pair(directory, "sentinel ids\n", "sentinel records")
+    table = directory / "sentinel-table.json"
+    table.write_text("sentinel table")
+
+    with pytest.raises(ValueError):
+        save_replay_orbits(directory, norad_ids, records)
+    with pytest.raises(ValueError):
+        save_orbits_for_reuse(table, norad_ids, records)
+
+    assert ids_path.read_text() == "sentinel ids\n"
+    assert records_path.read_text() == "sentinel records"
+    assert table.read_text() == "sentinel table"
+
+
 def test_single_table_duplicates_and_frozen_pair_uniqueness(tmp_path):
     """The single table may repeat a satellite; a frozen pair may not."""
     first = make_tle_record(A, TLE_EPOCH)
