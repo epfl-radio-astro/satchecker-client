@@ -545,7 +545,13 @@ for norad_id in resolution.missing:
 
 A rejection that is not an age rejection has no epoch to report: `age_days`,
 `offset_days`, `ceiling_days` and `limit_name` are all `None` on it, because
-nothing about the record could be measured. And the two maps are not
+nothing about the record could be measured. What it carries instead is `error`,
+the exception that refused *that* candidate, so the diagnostic is at hand
+without re-reading the events. It is `None` on an age rejection: nothing
+refused that record, it was read, measured and found too far away. Only one
+rejection per satellite is kept and it is the first one, so for a satellite with
+two unusable candidates the last `candidate_rejected` event describes the other
+candidate; `error` describes this one. And the two maps are not
 alternatives — an ID can appear in neither, either, or both — so each is asked
 about separately.
 

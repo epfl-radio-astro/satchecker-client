@@ -49,6 +49,7 @@ from .resolve_helpers import (
     ATTEMPT_NOT_SENT,
     ATTEMPT_OVER_AGE,
     ATTEMPT_USABLE,
+    EVENT_CANDIDATE_REJECTED,
     EVENT_ENDPOINT_FALLBACK,
     EVENT_OUTAGE,
     EVENT_REFRESH_FAILED,
@@ -64,6 +65,7 @@ from .resolve_helpers import (
     UNAVAILABLE_OFFLINE,
     EventLog,
     ForbiddenEndpoint,
+    RejectedOrbit,
     StubEndpoint,
     extra_frame,
     frame_of,
@@ -367,6 +369,113 @@ def test_best_rejection_retains_offset_and_its_own_ceiling():
     assert any(
         event.source == SOURCE_EXTRA for event in resolution.events if A in event.norad_ids
     )
+
+
+def _unknown_status_frame(norad_id, epoch_jd) -> pd.DataFrame:
+    """A record whose lines are fine and whose provenance claim is not ours.
+
+    Valid enough for the cache's own validator, which reads the lines and not
+    the claim, and refused by the resolver — which is how a satellite ends up
+    with two unusable candidates that fail for different reasons.
+    """
+    return frame_of(
+        KIND_TLE, [(norad_id, epoch_jd)], **{CHECKSUM_STATUS_FIELD: "probably-fine"}
+    )
+
+
+def test_a_retained_rejection_carries_the_error_that_refused_it(tmp_path):
+    """The kept rejection's diagnostic is its own candidate's, not the last one's.
+
+    Two unusable candidates for one satellite, from two sources. The first is
+    the rejection kept, so an application reading ``.error`` beside ``.source``
+    describes one candidate; matching ``candidate_rejected`` events by ID
+    instead would put the cached record's reason against the file's source.
+    """
+    cache = TextOrbitCache(tmp_path / "cache")
+    cache.store(A, _unknown_status_frame(A, OBS - 0.5))
+    events = EventLog()
+
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        on_event=events,
+        **policy(
+            source_order=(GROUP_EXTRA, GROUP_REMOTE),
+            extra_orbit_max_age_days=3.0,
+            remote_max_age_days=3.0,
+            offline=True,
+            cache=cache,
+        ),
+        extra_records=_corrupt_frame(A, OBS - 0.5),
+    )
+
+    rejected = events.for_id(A, EVENT_CANDIDATE_REJECTED)
+    assert [event.source for event in rejected] == [SOURCE_EXTRA, SOURCE_CACHE]
+
+    rejection = resolution.rejected[A]
+    assert rejection.source == SOURCE_EXTRA
+    assert rejection.reason_code == REASON_INVALID
+    assert rejection.error is rejected[0].error
+    # The other candidate's own reason is still reported, just not as this one's.
+    assert rejected[1].error is not None
+    assert rejected[1].error is not rejection.error
+
+
+def test_two_unusable_candidates_from_one_source_keep_the_first_error():
+    """One source, two defects: the retained rejection is the first candidate's."""
+    extra = pd.concat(
+        [_corrupt_frame(A, OBS - 0.5), _unknown_status_frame(A, OBS - 0.2)],
+        ignore_index=True,
+    )
+    events = EventLog()
+
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        on_event=events,
+        **policy(source_order=(GROUP_EXTRA,), extra_orbit_max_age_days=3.0),
+        extra_records=extra,
+    )
+
+    rejected = events.for_id(A, EVENT_CANDIDATE_REJECTED)
+    assert [event.source for event in rejected] == [SOURCE_EXTRA, SOURCE_EXTRA]
+    assert resolution.rejected[A].error is rejected[0].error
+    assert rejected[1].error is not rejected[0].error
+
+
+def test_an_over_age_rejection_carries_no_error():
+    """Nothing refused the record: it was read, measured and found too far away."""
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(source_order=(GROUP_EXTRA,), extra_orbit_max_age_days=3.0),
+        extra_records=extra_frame([(KIND_TLE, A, OBS - 5.0)]),
+    )
+
+    rejection = resolution.rejected[A]
+    assert rejection.reason_code == REASON_OVER_AGE
+    assert rejection.error is None
+
+
+def test_rejected_orbit_still_takes_its_existing_positional_arguments():
+    """The new field is appended, so every existing construction still builds one."""
+    invalid = RejectedOrbit(A, SOURCE_EXTRA, None, None, None, None, REASON_INVALID)
+    over_age = RejectedOrbit(
+        A,
+        SOURCE_CACHE,
+        None,
+        None,
+        OBS - 5.0,
+        -5.0,
+        REASON_OVER_AGE,
+        3.0,
+        "remote_max_age_days",
+    )
+    assert (invalid.error, over_age.error) == (None, None)
+    assert over_age.limit_name == "remote_max_age_days"
 
 
 def test_a_resolver_only_validation_failure_is_a_response_error(monkeypatch):

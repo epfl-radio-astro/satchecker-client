@@ -36,6 +36,7 @@ from satchecker_client.replay import (  # noqa: F401  re-exported for the tests
 )
 from satchecker_client.resolve import (  # noqa: F401  re-exported for the tests
     OrbitInputError,
+    RejectedOrbit,
     read_extra_orbit_dir,
     resolve_orbits,
 )

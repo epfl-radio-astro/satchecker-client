@@ -191,6 +191,14 @@ class RejectedOrbit:
     ``limit_name`` is the *parameter* that refused it — a rejection that does
     not say which ceiling applied cannot be acted on, and the ceilings are
     deliberately independent of one another.
+
+    ``error`` is the exception that refused *this* candidate, for an unusable
+    one, and ``None`` for a record refused on age: nothing refused that one, it
+    was read, measured and found too far away. It is carried here because only
+    one rejection per satellite is kept and it is the first: with two unusable
+    candidates for one ID, the last ``candidate_rejected`` event describes the
+    other candidate, and pairing it with this ``source`` would report a reason
+    against a source that did not produce it.
     """
 
     norad_id: int
@@ -202,6 +210,7 @@ class RejectedOrbit:
     reason_code: str
     ceiling_days: Optional[float] = None
     limit_name: Optional[str] = None
+    error: Optional[Exception] = None
 
     @property
     def age_days(self) -> Optional[float]:
@@ -1231,6 +1240,7 @@ class _Resolution:
                 epoch_jd=None,
                 offset_days=None,
                 reason_code=REASON_INVALID,
+                error=error,
             ),
         )
 

@@ -78,8 +78,8 @@ keyword with no default. :func:`~satchecker_client.resolve.resolve_orbits`
 returns an :class:`~satchecker_client.resolve.OrbitResolution`: accepted records
 with the source and signed offset that chose them
 (:class:`~satchecker_client.resolve.ResolvedOrbit`), the nearest near-miss with
-the parameter that refused it
-(:class:`~satchecker_client.resolve.RejectedOrbit`), one
+the parameter that refused it — or, for an unusable record, the exception that
+did (:class:`~satchecker_client.resolve.RejectedOrbit`), one
 :class:`~satchecker_client.resolve.EndpointAttempt` per configured endpoint for
 every satellite that entered the remote group, the request failures, the
 satellites nothing was found for and why, and a
