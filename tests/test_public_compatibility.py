@@ -350,23 +350,60 @@ def test_importing_the_package_has_no_side_effects(monkeypatch):
     assert client._client_identifier is None
 
 
-def test_importing_resolver_has_no_side_effects(monkeypatch):
+#: The optional modules, and the package attribute importing each one binds.
+OPTIONAL_MODULES = ("satchecker_client.resolve", "satchecker_client.replay")
+
+
+@pytest.fixture
+def reimportable_optional_modules():
+    """Let one test reimport the optional modules, and put every binding back.
+
+    Importing a submodule binds it in two places — the ``sys.modules`` entry and
+    an attribute on the package — so restoring only the first leaves the session
+    with two module objects answering to one name: the package re-exporting the
+    first one's classes while ``import`` hands out the second's, and a test that
+    patches a name on one patching nothing the code under test uses. Both go
+    back, and the finaliser says so rather than leaving the next test to find
+    out.
+    """
+    saved = {name: sys.modules[name] for name in OPTIONAL_MODULES}
+    yield OPTIONAL_MODULES
+    for name, module in saved.items():
+        attribute = name.rpartition(".")[2]
+        sys.modules[name] = module
+        setattr(sc, attribute, module)
+        assert sys.modules[name] is module
+        assert getattr(sc, attribute) is module
+
+
+def test_importing_resolver_has_no_side_effects(
+    monkeypatch, reimportable_optional_modules
+):
     """Importing the optional layer must not reach a network, a cache or a name."""
     before = client.user_agent()
     monkeypatch.setattr(TextOrbitCache, "__init__", forbid("TextOrbitCache()"))
     monkeypatch.setattr(client, "_http_get", forbid("client._http_get"))
     monkeypatch.setattr(client, "set_client_identifier", forbid("set_client_identifier"))
 
-    for name in ("satchecker_client.resolve", "satchecker_client.replay"):
-        # delitem rather than pop: pytest puts the module back when the test
-        # ends. A second module object left under one name would have the
-        # package re-exporting the first one's classes while ``import`` hands
-        # out the second's, which the export guard below compares by identity.
-        monkeypatch.delitem(sys.modules, name)
+    for name in reimportable_optional_modules:
+        sys.modules.pop(name)
         importlib.import_module(name)
 
     assert client.user_agent() == before
     assert client._client_identifier is None
+
+
+def test_the_optional_modules_have_one_identity_each():
+    """Three ways of naming a submodule, one module object behind all of them.
+
+    Follows the reimport above deliberately: this is what an incompletely
+    restored import leaves behind, and it is invisible from inside the test
+    that caused it.
+    """
+    for name in OPTIONAL_MODULES:
+        attribute = name.rpartition(".")[2]
+        assert getattr(sc, attribute) is sys.modules[name], name
+        assert sys.modules[name] is importlib.import_module(name), name
 
 
 def test_old_apis_do_not_delegate_to_new_layer(tmp_path, monkeypatch):
