@@ -21,7 +21,7 @@ import pytest
 
 from satchecker_client import cache as cache_module
 from satchecker_client.cache import TextOrbitCache
-from satchecker_client.client import SatCheckerError
+from satchecker_client.client import SatCheckerError, SatCheckerResponseError
 from satchecker_client.records import (
     CHECKSUM_STATUS_FIELD,
     CHECKSUM_UNVERIFIED_MISSING,
@@ -44,8 +44,10 @@ from .tle_helpers import (  # noqa: F401  block_network is an autouse fixture
     write_legacy_tle_file,
 )
 from .resolve_helpers import (
+    ATTEMPT_ERROR,
     GROUP_EXTRA,
     GROUP_REMOTE,
+    SOURCE_CACHE,
     ForbiddenEndpoint,
     StubEndpoint,
     forbid_acquisition,
@@ -414,6 +416,58 @@ def test_unverified_records_never_reach_cache_store(tmp_path):
     # The verified history that was already there is exactly what is still there.
     assert len(cache.get(A, log=lambda _m: None)) == 1
     assert len(cache.get(B, log=lambda _m: None)) == 1
+
+
+def test_invalid_service_provenance_cannot_replace_verified_cache_history(tmp_path):
+    """A row this layer refuses is not a row the shared cache should learn.
+
+    The cache's own validator predates the provenance field and cannot see an
+    unknown status, and its deduplication keeps the incoming row over the
+    perfectly good incumbent it matches. The run itself survives — it still
+    holds its cached record — but the *next* one reads a record it has to
+    reject, and offline there is nothing to replace it with.
+    """
+    cache = TextOrbitCache(tmp_path / "cache")
+    cache.store(A, frame_of(KIND_TLE, [(A, OBS - 2.0)]))
+    before = cache.path(A).read_text()
+
+    # The same lines and the same provider as the cached record, with a status
+    # made by something this package does not know.
+    endpoint = StubEndpoint(
+        "service", answers={A: _defective_frame("unknown_status", A, OBS - 2.0)}
+    )
+
+    resolution = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(
+            source_order=(GROUP_REMOTE,),
+            remote_max_age_days=3.0,
+            cache_reuse_max_age_days=0.0,
+            cache=cache,
+            endpoints=(endpoint.pair,),
+        ),
+    )
+
+    assert resolution.resolved[A].source == SOURCE_CACHE
+    assert isinstance(resolution.refresh_errors[A], SatCheckerResponseError)
+    assert resolution.attempts[A][0].status == ATTEMPT_ERROR
+    assert cache.path(A).read_text() == before
+
+    offline = resolve_orbits(
+        [A],
+        OBS,
+        log=lambda _m: None,
+        **policy(
+            source_order=(GROUP_REMOTE,),
+            remote_max_age_days=3.0,
+            offline=True,
+            cache=cache,
+            endpoints=(ForbiddenEndpoint().pair,),
+        ),
+    )
+    assert offline.resolved[A].source == SOURCE_CACHE
 
 
 def test_strict_policy_rejects_carried_unverified_after_rechecksum(tmp_path):

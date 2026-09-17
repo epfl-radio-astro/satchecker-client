@@ -1227,30 +1227,33 @@ class _Resolution:
             self.store_or_report(norad_id, verifiable)
 
     def verifiable(self, norad_id: int, rows: pd.DataFrame) -> pd.DataFrame:
-        """*rows* without the records nothing has verified.
+        """*rows*, canonicalised, without the records nothing here has verified.
 
         The shared cache is read by every application using this package, at
         whatever version each is on, and an older one refuses a whole file over
         a single line it cannot validate. :meth:`TextOrbitCache.store` already
         leaves out a line with no checksum digit; what it cannot see is a record
         whose lines checksum now but whose source never supplied the digits that
-        verify them. Such a record serves this run and is saved with it, and the
-        shared cache is left as it was.
+        verify them, nor one carrying a provenance claim it does not know how to
+        read. Neither is the cache's fault — its validator predates the claim —
+        but its deduplication keeps such a row over the good incumbent it
+        matches, and the next run reads a record it has to reject with nothing
+        to replace it. So a row this layer will not vouch for serves this run
+        only, and what is written is the validated copy rather than the wire
+        row: one canonicalisation, applied where the record is judged.
         """
         keep = []
         withheld = 0
-        for position, row in enumerate(rows.to_dict(orient="records")):
+        for row in rows.to_dict(orient="records"):
             try:
-                status = validated_record(row, allow_missing_checksum=True).get(
-                    CHECKSUM_STATUS_FIELD
-                )
+                record = validated_record(row, allow_missing_checksum=True)
             except (KeyError, ValueError, TypeError):
-                keep.append(position)  # not ours to judge; the cache applies its rule
+                withheld += 1
                 continue
-            if status == CHECKSUM_UNVERIFIED_MISSING:
+            if record.get(CHECKSUM_STATUS_FIELD) == CHECKSUM_UNVERIFIED_MISSING:
                 withheld += 1
             else:
-                keep.append(position)
+                keep.append(record)
         if withheld:
             self.emit(
                 EVENT_UNVERIFIED_NOT_CACHED,
@@ -1258,7 +1261,7 @@ class _Resolution:
                 source=SOURCE_SERVICE,
                 details={"records": withheld},
             )
-        return rows.iloc[keep]
+        return pd.DataFrame(keep)
 
     def store_or_report(self, norad_id: int, rows: pd.DataFrame) -> None:
         failure: list = []
