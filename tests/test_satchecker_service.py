@@ -6,6 +6,7 @@ in between. The policy tests (cache precedence, age ceilings, archive
 failover) stayed with TABASCAL, where the policy lives.
 """
 
+import json
 import threading
 import time
 
@@ -396,6 +397,40 @@ def test_a_batch_refuses_records_without_checksums_unless_allowed():
     )
     assert allowed.records["NORAD_CAT_ID"].tolist() == [26867, 25544]
     assert allowed.errors == {}
+
+
+def test_strict_nearest_response_error_reaches_batch_errors(monkeypatch):
+    """A failed reply must reach the batch as a failure, not as an absent satellite.
+
+    The batch layer only knows what the endpoint callable hands it. Given the
+    lenient parser, an error envelope served with HTTP 200 arrives as an empty
+    frame, which is recorded as "this satellite has no record" — the one answer
+    a caller must not confuse with an outage, since it removes a requested
+    satellite from a simulation without anything to show for it. Wrapping the
+    endpoint in strict parsing is what puts the ID in ``errors`` instead.
+    """
+    monkeypatch.setattr(
+        client, "_http_get", lambda *a, **k: json.dumps({"error": "unavailable"}).encode()
+    )
+
+    lenient = fetch_nearest_batch(
+        [25544], OBS, fetch_nearest=client.fetch_nearest_tle, log=lambda _m: None
+    )
+    assert lenient.records.empty
+    assert lenient.errors == {}
+
+    def strict(norad_id, epoch_jd):
+        return client.fetch_nearest_tle(norad_id, epoch_jd, strict_response=True)
+
+    result = fetch_nearest_batch(
+        [25544], OBS, fetch_nearest=strict, endpoint="nearest-TLE", log=lambda _m: None
+    )
+
+    assert result.records.empty
+    assert isinstance(result.errors[25544], SatCheckerResponseError)
+    # Per-request, not whole-service: the host answered, so the rest of a batch
+    # is still worth sending.
+    assert result.outage is None
 
 
 # ---------------------------------------------------------------------------

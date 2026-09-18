@@ -22,6 +22,7 @@ The names most callers need are re-exported here.
 """
 
 from ._version import __version__
+from ._time import datetime_to_jd, jd_to_datetime
 from .client import (
     BASE_URL,
     HANDOVER_JD,
@@ -44,8 +45,12 @@ from .cache import (
     SearchSnapshot,
     TextOrbitCache,
     read_legacy_tle_records,
+    read_orbit_file,
 )
 from .records import (
+    CHECKSUM_STATUS_FIELD,
+    CHECKSUM_UNVERIFIED_MISSING,
+    CHECKSUM_VERIFIED,
     KIND_OMM,
     KIND_TLE,
     KIND_FIELD,
@@ -54,6 +59,7 @@ from .records import (
     record_epoch_jd,
     record_kind,
     validate_record,
+    validated_record,
 )
 from .service import (
     MAX_WORKERS,
@@ -64,6 +70,8 @@ from .service import (
 )
 
 __all__ = [
+    "datetime_to_jd",
+    "jd_to_datetime",
     "__version__",
     "BASE_URL",
     "HANDOVER_JD",
@@ -86,6 +94,10 @@ __all__ = [
     "SearchSnapshot",
     "TextOrbitCache",
     "read_legacy_tle_records",
+    "read_orbit_file",
+    "CHECKSUM_STATUS_FIELD",
+    "CHECKSUM_UNVERIFIED_MISSING",
+    "CHECKSUM_VERIFIED",
     "KIND_OMM",
     "KIND_TLE",
     "KIND_FIELD",
@@ -94,6 +106,7 @@ __all__ = [
     "record_epoch_jd",
     "record_kind",
     "validate_record",
+    "validated_record",
     "MAX_WORKERS",
     "NearestBatchResult",
     "fetch_nearest_batch",

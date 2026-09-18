@@ -322,6 +322,273 @@ class TestRequestedSatelliteFiltering:
         assert frame["NORAD_CAT_ID"].tolist() == [25544]
 
 
+def _serve(monkeypatch, payload):
+    monkeypatch.setattr(client, "_http_get", lambda *a, **k: payload)
+
+
+def _single_row(payload: bytes) -> bytes:
+    """The same reply with ``orbital_data`` as one row object, not a list of one.
+
+    Both endpoints accept that shape today, so strict parsing has to keep
+    accepting it: it is a documented success, not a malformed value.
+    """
+    body = json.loads(payload)
+    envelope = body[0] if isinstance(body, list) else body
+    envelope["orbital_data"] = envelope["orbital_data"][0]
+    return json.dumps(body).encode()
+
+
+_TLE_ROWS = json.loads(make_nearest_json([(25544, EPOCH)]))["orbital_data"]
+
+#: Both nearest endpoints, with the name that must appear in a strict error.
+_BOTH_NEAREST = pytest.mark.parametrize(
+    "fetch, endpoint",
+    [(fetch_nearest_tle, "get-nearest-tle"), (fetch_nearest_omm, "get-nearest-omm")],
+    ids=["nearest-tle", "nearest-omm"],
+)
+
+
+class TestStrictNearestResponses:
+    """``strict_response=True``: absence and outage must stop looking alike.
+
+    The default parser reads a nearest-record reply leniently — an error
+    envelope served with HTTP 200, a missing data field and a null one all
+    become "this satellite has no record", which is the same answer a genuinely
+    empty archive gives. A caller that has to tell those apart, because a wrong
+    answer means silently simulating without a satellite it asked for, opts in
+    here. The documented empty forms stay empty; everything else raises.
+
+    The default is unchanged, deliberately: tabascal calls these functions and
+    does not opt in.
+    """
+
+    @_BOTH_NEAREST
+    @pytest.mark.parametrize(
+        "payload, message",
+        [
+            # An error envelope served with HTTP 200 is not "no record", with or
+            # without an empty data list beside it. The service's own wording is
+            # the only thing that says what went wrong, so it has to be carried.
+            (json.dumps({"error": "unavailable"}).encode(), "unavailable"),
+            (
+                json.dumps({"error": "unavailable", "orbital_data": []}).encode(),
+                "unavailable",
+            ),
+            # No recognised data field at all: the reply says nothing about the
+            # satellite, so it cannot be read as the satellite having no record.
+            (json.dumps({}).encode(), "data field|orbital_data"),
+            (json.dumps({"version": "1.7.0"}).encode(), "data field|orbital_data"),
+            (json.dumps({"data": _TLE_ROWS}).encode(), "data field|orbital_data"),
+            # Present but malformed. Selection is by presence, not truthiness:
+            # each of these is falsy and today becomes an empty result.
+            (json.dumps({"orbital_data": None}).encode(), "orbital_data"),
+            (json.dumps({"orbital_data": False}).encode(), "orbital_data"),
+            (json.dumps({"orbital_data": ""}).encode(), "orbital_data"),
+            (json.dumps({"orbital_data": 0}).encode(), "orbital_data"),
+            # A wrapper holding more than one envelope: today the first wins and
+            # the rest vanish without a word.
+            (
+                json.dumps([{"orbital_data": []}, {"orbital_data": []}]).encode(),
+                "2 objects",
+            ),
+        ],
+        ids=[
+            "error envelope",
+            "error beside empty data",
+            "empty envelope",
+            "envelope with no data field",
+            "rows under an unrecognised key",
+            "null orbital_data",
+            "false orbital_data",
+            "empty-string orbital_data",
+            "zero orbital_data",
+            "two-object wrapper",
+        ],
+    )
+    def test_strict_nearest_rejects_error_or_missing_data_envelope(
+        self, monkeypatch, fetch, endpoint, payload, message
+    ):
+        _serve(monkeypatch, payload)
+        with pytest.raises(SatCheckerResponseError, match=message) as caught:
+            fetch(25544, EPOCH, strict_response=True)
+        # The context matters as much as the failure: a caller collecting these
+        # per satellite needs to know which archive answered this way.
+        assert endpoint in str(caught.value)
+
+    def test_strict_nearest_rejects_contradictory_data_fields(self, monkeypatch):
+        # Only the TLE endpoint, because ``tle_data`` is the legacy spelling of
+        # *its* field; whether the OMM endpoint recognises it at all is not a
+        # contract worth pinning here.
+        _serve(
+            monkeypatch,
+            json.dumps({"orbital_data": [], "tle_data": _TLE_ROWS}).encode(),
+        )
+        with pytest.raises(SatCheckerResponseError, match="tle_data"):
+            fetch_nearest_tle(25544, EPOCH, strict_response=True)
+
+    @_BOTH_NEAREST
+    @pytest.mark.parametrize(
+        "payload",
+        [b"[]", b'{"orbital_data": []}', b'[{"orbital_data": []}]'],
+        ids=["empty list", "empty orbital_data", "wrapped empty orbital_data"],
+    )
+    def test_strict_nearest_preserves_documented_empty_results(
+        self, monkeypatch, fetch, endpoint, payload
+    ):
+        """Genuine absence must survive the stricter reading unchanged.
+
+        These are the shapes the service actually uses to say "no record for
+        this satellite" — confirmed against the live service — and strict mode
+        would be useless if it turned them into failures too.
+        """
+        _serve(monkeypatch, payload)
+        frame = fetch(99999, EPOCH, strict_response=True)
+        assert frame.empty
+
+    def test_strict_nearest_preserves_the_legacy_tle_data_field(self, monkeypatch):
+        _serve(monkeypatch, b'{"tle_data": []}')
+        assert fetch_nearest_tle(99999, EPOCH, strict_response=True).empty
+
+    @pytest.mark.parametrize(
+        "fetch, payload, columns",
+        [
+            (fetch_nearest_tle, make_nearest_json([(25544, EPOCH)]), client.TLE_COLUMNS),
+            (
+                fetch_nearest_omm,
+                make_nearest_omm_json([(25544, EPOCH)]),
+                client.OMM_COLUMNS,
+            ),
+            (
+                fetch_nearest_tle,
+                _single_row(make_nearest_json([(25544, EPOCH)])),
+                client.TLE_COLUMNS,
+            ),
+            (
+                fetch_nearest_omm,
+                _single_row(make_nearest_omm_json([(25544, EPOCH)])),
+                client.OMM_COLUMNS,
+            ),
+        ],
+        ids=["tle", "omm", "tle single row object", "omm single row object"],
+    )
+    def test_strict_nearest_accepts_valid_tle_and_omm_envelopes(
+        self, monkeypatch, fetch, payload, columns
+    ):
+        _serve(monkeypatch, payload)
+        strict = fetch(25544, EPOCH, strict_response=True)
+        assert list(strict.columns) == columns + ["RECORD_KIND"]
+        assert strict["NORAD_CAT_ID"].tolist() == [25544]
+        # Strict parsing rejects more replies; it must not normalise a good one
+        # differently, value for value.
+        pd.testing.assert_frame_equal(strict, fetch(25544, EPOCH))
+
+    @_BOTH_NEAREST
+    def test_strict_nearest_filters_to_the_requested_satellite(
+        self, monkeypatch, fetch, endpoint
+    ):
+        build = make_nearest_json if endpoint == "get-nearest-tle" else make_nearest_omm_json
+        _serve(monkeypatch, build([(25544, EPOCH), (99999, EPOCH)]))
+        frame = fetch(25544, EPOCH, strict_response=True)
+        assert frame["NORAD_CAT_ID"].tolist() == [25544]
+
+        # And a reply made up entirely of another satellite stays an error
+        # rather than becoming an empty result.
+        _serve(monkeypatch, build([(99999, EPOCH)]))
+        with pytest.raises(SatCheckerResponseError, match="99999"):
+            fetch(25544, EPOCH, strict_response=True)
+
+    @_BOTH_NEAREST
+    @pytest.mark.parametrize(
+        "status, expected",
+        [
+            (404, SatCheckerResponseError),
+            (500, SatCheckerTransportError),
+            (429, SatCheckerRateLimitError),
+        ],
+        ids=["404", "500", "429"],
+    )
+    def test_strict_nearest_leaves_transport_failures_as_they_were(
+        self, monkeypatch, fetch, endpoint, status, expected
+    ):
+        """Strict reading is about a body that arrived, and only about that.
+
+        The classification of a reply that never arrived — one satellite's
+        problem, an outage, a rate limit a batch must back off from — is what a
+        caller decides whether to keep asking on, and opting into stricter
+        parsing must not move a failure between those classes.
+        """
+        def fail(*args, **kwargs):
+            raise urllib.error.HTTPError("url", status, "reason", {}, None)
+
+        monkeypatch.setattr(client.urllib.request, "urlopen", fail)
+
+        with pytest.raises(expected, match=f"HTTP {status}"):
+            fetch(25544, EPOCH, strict_response=True)
+
+
+def _rows_in_second_envelope() -> bytes:
+    """A list whose first envelope is empty and whose second carries the rows."""
+    first = json.loads(make_nearest_json([(25544, EPOCH)]))
+    envelope = first[0] if isinstance(first, list) else first
+    return json.dumps([{"orbital_data": []}, envelope]).encode()
+
+
+def _error_beside_rows() -> bytes:
+    """A valid reply that also carries an ``error`` field."""
+    payload = json.loads(make_nearest_json([(25544, EPOCH)]))
+    envelope = payload[0] if isinstance(payload, list) else payload
+    envelope["error"] = "unavailable"
+    return json.dumps(payload).encode()
+
+
+class TestDefaultNearestContract:
+    """What the two endpoints do when nobody opts in — tabascal's contract.
+
+    Strict parsing is additive. Every reply below is read exactly as it was
+    before the option existed, including the lenient readings strict mode is
+    there to refuse; changing any of them would change what an unmodified
+    consumer resolves, without that consumer asking for anything.
+    """
+
+    @pytest.mark.parametrize(
+        "fetch, payload, expected_ids",
+        [
+            (fetch_nearest_tle, make_nearest_json([(25544, EPOCH)]), [25544]),
+            (fetch_nearest_omm, make_nearest_omm_json([(25544, EPOCH)]), [25544]),
+            (fetch_nearest_tle, b"[]", []),
+            (fetch_nearest_omm, b"[]", []),
+            (fetch_nearest_tle, b'{"orbital_data": []}', []),
+            (fetch_nearest_omm, b'[{"orbital_data": []}]', []),
+            # Lenient by design, and left that way: these become empty results.
+            (fetch_nearest_tle, b'{"tle_data": []}', []),
+            (fetch_nearest_tle, json.dumps({"error": "unavailable"}).encode(), []),
+            (fetch_nearest_omm, json.dumps({"error": "unavailable"}).encode(), []),
+            (fetch_nearest_tle, json.dumps({}).encode(), []),
+            (fetch_nearest_tle, json.dumps({"orbital_data": None}).encode(), []),
+            # Only the first envelope of a list is read, whatever the rest hold,
+            # and an error field beside valid rows is ignored: the rows win.
+            (fetch_nearest_tle, _rows_in_second_envelope(), []),
+            (fetch_nearest_tle, _error_beside_rows(), [25544]),
+        ],
+        ids=[
+            "tle record", "omm record", "tle empty list", "omm empty list",
+            "tle empty orbital_data", "omm wrapped empty orbital_data",
+            "legacy tle_data", "tle error envelope", "omm error envelope",
+            "empty envelope", "null orbital_data",
+            "rows only in second envelope", "error beside valid rows",
+        ],
+    )
+    def test_nearest_default_contract_is_unchanged(
+        self, monkeypatch, fetch, payload, expected_ids
+    ):
+        _serve(monkeypatch, payload)
+        frame = fetch(25544, EPOCH)
+        if expected_ids:
+            assert frame["NORAD_CAT_ID"].tolist() == expected_ids
+        else:
+            assert frame.empty
+
+
 def _search_row(norad_id, name, **fields):
     """One ``search-satellites`` row as the service sends it; unset fields null."""
     row = {
@@ -472,3 +739,32 @@ class TestSearchSatellites:
         assert list(frame.columns) == client.SEARCH_COLUMNS
         assert pd.isna(frame.loc[0, "DECAY_DATE"])
 
+
+class TestTimeConversions:
+    def test_the_julian_date_conversions_are_public(self):
+        """Callers compare record epochs against their own clock with the same
+        convention the package used to state them, so it is exported."""
+        import satchecker_client as sc
+
+        assert sc.jd_to_datetime is sc._time.jd_to_datetime
+        assert sc.datetime_to_jd is sc._time.datetime_to_jd
+        assert {"jd_to_datetime", "datetime_to_jd"} <= set(sc.__all__)
+
+    def test_a_julian_date_round_trips_through_a_naive_utc_datetime(self):
+        import satchecker_client as sc
+        from datetime import datetime, timezone
+
+        stamp = datetime(2023, 2, 24, 13, 44, 58, 123000)
+        jd_value = sc.datetime_to_jd(stamp)
+        # A Julian Date near 2.46e6 has ~40 us of double resolution, so the
+        # round trip is exact to well under a millisecond, not to the microsecond.
+        assert abs((sc.jd_to_datetime(jd_value) - stamp).total_seconds()) < 1e-4
+        assert sc.jd_to_datetime(2460000.0) == datetime(2023, 2, 24, 12)
+        # An aware datetime is converted to UTC, whatever its offset, and comes
+        # back naive: 14:00 at UTC+2 is the same instant as 12:00 UTC.
+        from datetime import timedelta
+
+        plus_two = timezone(timedelta(hours=2))
+        assert sc.datetime_to_jd(datetime(2023, 2, 24, 14, tzinfo=plus_two)) == 2460000.0
+        assert sc.jd_to_datetime(2460000.0).tzinfo is None
+        assert sc.datetime_to_jd(stamp.replace(tzinfo=timezone.utc)) == jd_value

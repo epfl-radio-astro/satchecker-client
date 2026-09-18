@@ -470,26 +470,86 @@ def _normalise_omm(records: pd.DataFrame) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
-def _fetch_nearest_rows(endpoint: str, norad_id: int, epoch_jd: float):
-    """Row dicts from one of the ``get-nearest-*`` endpoints, plus the URL used.
+# Fields a ``get-nearest-*`` reply may carry its rows in. ``tle_data`` is the
+# older spelling, still served by some deployments and still accepted.
+_NEAREST_DATA_FIELDS = ("orbital_data", "tle_data")
 
-    Returns ``(None, url)`` when the service has no record for the satellite —
-    which it signals either as an empty top-level list or as an empty
-    ``orbital_data``, both observed. Note that "no record" here means *no record
-    at all*: neither endpoint reports that it has nothing near the epoch asked
-    for. ``get-nearest-omm`` answers a 2021 request with its earliest 2026
-    record. Judging the epoch is the caller's job.
+
+def _strict_nearest_data(obj: dict, endpoint: str, url: str):
+    """The rows of a nearest-record envelope, required in full rather than defaulted.
+
+    The reasoning is :func:`_search_rows`': every lenient reading of a broken
+    reply ends the same way, as "this satellite has no record" — which is also
+    what a genuinely empty archive says, and acting on it drops a requested
+    satellite from a run with nothing to show for it. So the envelope must carry
+    no ``error``, at least one recognised data field, and rows in that field
+    rather than some falsy value standing in for them.
+
+    Fields are selected by *presence*, not by truthiness, which is what makes a
+    null or empty-string ``orbital_data`` distinguishable from an absent one. Two
+    recognised fields with different contents describe two different answers to
+    one question, so neither is used.
     """
-    url = f"{BASE_URL}/{endpoint}/?" + urllib.parse.urlencode(
-        {"id": int(norad_id), "id_type": "catalog", "epoch": repr(float(epoch_jd))}
-    )
-    payload = _load_json(_http_get(url), url)
+    if "error" in obj:
+        raise SatCheckerResponseError(
+            f"SatChecker {endpoint} response reports an error ({url}): "
+            f"{obj['error']!r}"
+        )
+    present = [field for field in _NEAREST_DATA_FIELDS if field in obj]
+    if not present:
+        raise SatCheckerResponseError(
+            f"SatChecker {endpoint} response has no data field "
+            f"({' or '.join(_NEAREST_DATA_FIELDS)}) ({url}): keys {sorted(obj)}"
+        )
+    field, rows = present[0], obj[present[0]]
+    for other in present[1:]:
+        if obj[other] != rows:
+            raise SatCheckerResponseError(
+                f"SatChecker {endpoint} response carries different {field} and "
+                f"{other} ({url}): which one describes the satellite cannot be "
+                "decided from the reply"
+            )
+    if isinstance(rows, dict):
+        return [rows]
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        raise SatCheckerResponseError(
+            f"SatChecker {endpoint} {field} is not a list of records ({url}): "
+            f"{type(rows).__name__}"
+        )
+    return rows
+
+
+def _nearest_rows(payload, endpoint: str, url: str, *, strict: bool):
+    """Row dicts of a ``get-nearest-*`` reply, or ``None`` for "no such record".
+
+    "No record" means *no record at all*: neither endpoint reports that it has
+    nothing near the epoch asked for, and ``get-nearest-omm`` answers a 2021
+    request with its earliest 2026 record. Judging the epoch is the caller's job.
+    The service signals absence either as an empty top-level list or as an empty
+    data field, both observed, and both readings keep those.
+
+    Everything else the two readings disagree about. The default is lenient by
+    history: it ignores an ``error`` field, uses the first envelope of a list, and
+    takes the first data field holding anything — so an error envelope served
+    with HTTP 200, a missing data field or a null one reads as absence, and one
+    carrying rows anyway reads as those rows. *strict* separates those — see
+    :func:`_strict_nearest_data`.
+    """
     if isinstance(payload, list) and not payload:
-        return None, url  # empty list == no record for this satellite
+        return None  # empty list == no record for this satellite
+    if strict and isinstance(payload, list) and len(payload) != 1:
+        raise SatCheckerResponseError(
+            f"SatChecker {endpoint} response is a list of {len(payload)} objects, "
+            f"not one ({url})"
+        )
     obj = _as_object(payload, url)
-    rows = obj.get("orbital_data") or obj.get("tle_data") or []
+    rows = (
+        _strict_nearest_data(obj, endpoint, url)
+        if strict
+        else obj.get("orbital_data") or obj.get("tle_data") or []
+    )
     if not rows:
-        return None, url
+        return None
     # The endpoint normally returns a list of row objects, but accepting a single
     # row object costs nothing and keeps pandas' raw "all scalar values" ValueError
     # from escaping the client's SatCheckerError contract.
@@ -500,7 +560,18 @@ def _fetch_nearest_rows(endpoint: str, norad_id: int, epoch_jd: float):
             f"SatChecker returned unexpected {endpoint} rows ({url}): "
             f"{type(rows).__name__}"
         )
-    return rows, url
+    return rows
+
+
+def _fetch_nearest_rows(
+    endpoint: str, norad_id: int, epoch_jd: float, *, strict: bool = False
+):
+    """Row dicts from one of the ``get-nearest-*`` endpoints, plus the URL used."""
+    url = f"{BASE_URL}/{endpoint}/?" + urllib.parse.urlencode(
+        {"id": int(norad_id), "id_type": "catalog", "epoch": repr(float(epoch_jd))}
+    )
+    payload = _load_json(_http_get(url), url)
+    return _nearest_rows(payload, endpoint, url, strict=strict), url
 
 
 def _frame(rows: list[dict], endpoint: str, url: str) -> pd.DataFrame:
@@ -541,7 +612,9 @@ def _requested_rows(
     return matching
 
 
-def fetch_nearest_tle(norad_id: int, epoch_jd: float) -> pd.DataFrame:
+def fetch_nearest_tle(
+    norad_id: int, epoch_jd: float, *, strict_response: bool = False
+) -> pd.DataFrame:
     """Fetch the single TLE nearest *epoch_jd* for one satellite.
 
     Returns an empty DataFrame if SatChecker has no record for the satellite.
@@ -550,15 +623,32 @@ def fetch_nearest_tle(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     however far from the requested epoch that is. Rows for other satellites are
     filtered out; a response carrying only those raises
     :class:`SatCheckerResponseError`.
+
+    *strict_response* changes which replies are refused, not how an accepted one
+    is read. By default a reply that makes no sense is read for whatever it
+    appears to hold: an ``error`` field is ignored, the first envelope of a list
+    is used and the rest dropped, and the first data field holding anything wins.
+    An error envelope served with HTTP 200, no data field at all and a null one
+    therefore come back as an empty frame, indistinguishable from the service
+    saying it has no such record — while an error-bearing first envelope that
+    also carries valid rows returns those rows, with nothing said about the
+    error beside them, and any envelope after the first is ignored whatever it
+    holds. Pass true and each of those replies raises
+    :class:`SatCheckerResponseError` naming the endpoint, while the documented
+    empty forms stay empty frames.
     """
-    rows, url = _fetch_nearest_rows("get-nearest-tle", norad_id, epoch_jd)
+    rows, url = _fetch_nearest_rows(
+        "get-nearest-tle", norad_id, epoch_jd, strict=strict_response
+    )
     if rows is None:
         return pd.DataFrame()
     rows = _requested_rows(rows, norad_id, "get-nearest-tle", url)
     return _normalise(_frame(rows, "get-nearest-tle", url))
 
 
-def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
+def fetch_nearest_omm(
+    norad_id: int, epoch_jd: float, *, strict_response: bool = False
+) -> pd.DataFrame:
     """Fetch the single OMM element set nearest *epoch_jd* for one satellite.
 
     Returns an empty DataFrame if SatChecker has no record for the satellite.
@@ -569,8 +659,18 @@ def fetch_nearest_omm(norad_id: int, epoch_jd: float) -> pd.DataFrame:
     function's — it reports what the service returned. Rows for other satellites
     are filtered out; a response carrying only those raises
     :class:`SatCheckerResponseError`.
+
+    *strict_response* is as in :func:`fetch_nearest_tle`: by default a reply that
+    makes no sense reads as whatever it appears to hold — usually as the
+    satellite having no record — and passing true raises
+    :class:`SatCheckerResponseError` for it instead, keeping the documented empty
+    forms empty. Distinguishing absence from an outage matters
+    most here, since this archive is also the one that answers a pre-handover
+    request with a record years off epoch.
     """
-    rows, url = _fetch_nearest_rows("get-nearest-omm", norad_id, epoch_jd)
+    rows, url = _fetch_nearest_rows(
+        "get-nearest-omm", norad_id, epoch_jd, strict=strict_response
+    )
     if rows is None:
         return pd.DataFrame()
     rows = _requested_rows(rows, norad_id, "get-nearest-omm", url)

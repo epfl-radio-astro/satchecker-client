@@ -16,6 +16,10 @@ is answered here:
     expect.
 ``validate_record``
     Whether it is usable at all, returning the NORAD catalogue ID it belongs to.
+``validated_record``
+    The same checks, returning the record itself in canonical form with its
+    checksum assurance stated — for a consumer that has to keep, save and reread
+    exactly what it propagated.
 
 Everything above the seams — source precedence, the age ceiling, the
 strictly-fresher incumbency rule — works off ``epoch_jd`` and an opaque record,
@@ -49,10 +53,13 @@ from decimal import Decimal, InvalidOperation
 from ._time import datetime_to_jd
 from .tle_parse import (
     ELEMENT_FIELDS,
+    MISSING_CHECKSUM,
     parse_tle_elements,
     semimajor_axis_km,
     tle_epoch_jd,
+    tle_line_defects,
     validate_elements,
+    validate_tle_line,
     validate_tle_pair,
 )
 
@@ -62,6 +69,21 @@ KIND_OMM = "omm"
 
 #: Column naming the format explicitly. Optional — see :func:`record_kind`.
 KIND_FIELD = "RECORD_KIND"
+
+#: Column recording what a TLE record's *source* offered as evidence, which is
+#: not the same question as whether its lines checksum now. See
+#: :func:`validated_record`. Never set on an OMM record: that format has no
+#: checksum, so there is no claim to make.
+CHECKSUM_STATUS_FIELD = "TLE_CHECKSUM_STATUS"
+
+#: Both lines carried a checksum digit and it matched.
+CHECKSUM_VERIFIED = "verified"
+
+#: A line reached us without its checksum digit, so nothing verifies its
+#: contents. Carried forward for the life of the record.
+CHECKSUM_UNVERIFIED_MISSING = "unverified_missing_checksum"
+
+_CHECKSUM_STATUSES = (CHECKSUM_VERIFIED, CHECKSUM_UNVERIFIED_MISSING)
 
 #: The two lines that make a TLE record.
 TLE_LINE_COLUMNS = ("TLE_LINE1", "TLE_LINE2")
@@ -305,3 +327,110 @@ def validate_record(record, *, allow_missing_checksum: bool = False) -> int:
     norad_id = norad_id_of(record, "OMM record")
     record_elements(record)  # runs validate_elements and the epoch window
     return norad_id
+
+
+def _carried_checksum_status(record):
+    """The checksum status *record* already carries, or ``None`` if it carries none.
+
+    An unrecognised value is rejected rather than ignored. It is a claim about
+    how far the record can be trusted, made by something this package does not
+    know, and reading it as "no claim" would quietly re-classify the record as
+    whatever the current lines happen to support.
+    """
+    if not _has(record, CHECKSUM_STATUS_FIELD):
+        return None
+    raw = record[CHECKSUM_STATUS_FIELD]
+    status = str(raw).strip().lower()
+    if status not in _CHECKSUM_STATUSES:
+        raise ValueError(
+            f"record has an unknown {CHECKSUM_STATUS_FIELD} {raw!r} (this "
+            f"satchecker_client knows {', '.join(_CHECKSUM_STATUSES)})"
+        )
+    return status
+
+
+def validated_record(record, *, allow_missing_checksum: bool = False) -> dict:
+    """Validate *record* and return a canonical copy of it, its assurance stated.
+
+    :func:`validate_record` answers "is this usable?" and hands back an ID. This
+    answers the question a consumer has just before it propagates something, and
+    again when it reads its own saved copy back: *what exactly am I about to
+    use*. The returned ``dict`` — a copy; the caller's mapping is never rewritten
+    — carries
+
+    - an explicit :data:`KIND_FIELD`, so a saved record never has to be
+      re-inferred;
+    - ``NORAD_CAT_ID`` as a checked integer, equal to the identity embedded in a
+      TLE's lines (for OMM there is nothing to compare it against, as
+      :func:`validate_record` explains);
+    - TLE lines in standard form, a stray trailing backslash removed, exactly as
+      :func:`~satchecker_client.tle_parse.validate_tle_line` returns them;
+    - every other field as it came, provider metadata included;
+    - for a TLE, :data:`CHECKSUM_STATUS_FIELD`: :data:`CHECKSUM_VERIFIED` or
+      :data:`CHECKSUM_UNVERIFIED_MISSING`.
+
+    A ``pandas`` row is as acceptable as a mapping, since records arrive as rows
+    of a fetched or cached frame.
+
+    **The status is provenance, not a re-derivation.** It records what the
+    record's source offered, so it is never upgraded: lines accepted without
+    checksum digits stay unverified after a repair, a save and a reload, and a
+    record already marked unverified stays so however well its current lines
+    checksum — nothing verifies the digits its source omitted, whatever it now
+    carries. Without that, one permissive run would launder a record into every
+    strict run after it. So an unverified record needs *allow_missing_checksum*
+    on every pass, a verified one never does, and a corrupt checksum is refused
+    under either policy: allowing missing checksums must not weaken what a
+    present one means.
+
+    Raises ``ValueError`` on any problem, as :func:`validate_record` does.
+    """
+    kind = record_kind(record)
+    carried = _carried_checksum_status(record)
+    row_id = norad_id_of(record, f"{kind.upper()} record")
+    embedded_id = validate_record(record, allow_missing_checksum=allow_missing_checksum)
+    if embedded_id != row_id:
+        raise ValueError(
+            f"record is filed under satellite {row_id} but its lines belong to "
+            f"{embedded_id}"
+        )
+
+    validated = record.to_dict() if hasattr(record, "to_dict") else dict(record)
+    validated[KIND_FIELD] = kind
+    validated["NORAD_CAT_ID"] = row_id
+    if kind == KIND_OMM:
+        # No checksum and no second identifier to check the first against, so
+        # there is nothing to claim. Stamping a status here would make the two
+        # kinds look equally checked when they are not.
+        validated.pop(CHECKSUM_STATUS_FIELD, None)
+        return validated
+
+    lines = (
+        validate_tle_line(
+            _get(record, "TLE_LINE1", "TLE record"),
+            1,
+            allow_missing_checksum=allow_missing_checksum,
+        ),
+        validate_tle_line(
+            _get(record, "TLE_LINE2", "TLE record"),
+            2,
+            allow_missing_checksum=allow_missing_checksum,
+        ),
+    )
+    validated["TLE_LINE1"], validated["TLE_LINE2"] = lines
+    unverifiable = any(MISSING_CHECKSUM in tle_line_defects(line) for line in lines)
+    status = (
+        CHECKSUM_UNVERIFIED_MISSING
+        if unverifiable or carried == CHECKSUM_UNVERIFIED_MISSING
+        else CHECKSUM_VERIFIED
+    )
+    # Reached only for a record carrying the status from an earlier run: lines
+    # that are themselves checksum-less have already been refused above.
+    if status == CHECKSUM_UNVERIFIED_MISSING and not allow_missing_checksum:
+        raise ValueError(
+            f"TLE record for {row_id} is marked {CHECKSUM_UNVERIFIED_MISSING}: it "
+            "was accepted without the checksum digits that verify its lines, "
+            "whatever they carry now, and missing checksums were not allowed"
+        )
+    validated[CHECKSUM_STATUS_FIELD] = status
+    return validated

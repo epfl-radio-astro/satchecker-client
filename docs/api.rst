@@ -13,6 +13,10 @@ Package
 Client
 ------
 
+Transport and response normalisation. Both nearest-record functions take an
+opt-in keyword-only ``strict_response``, which changes only which replies are
+refused; the default reading of a reply is unchanged.
+
 .. automodule:: satchecker_client.client
     :members:
 
@@ -31,8 +35,33 @@ Service
 Records
 -------
 
+What a record is and whether it is usable. :func:`~satchecker_client.records.validated_record`
+additionally returns the record itself, canonical and with its checksum
+provenance stated.
+
 .. automodule:: satchecker_client.records
     :members:
+
+Time
+----
+
+The UTC Julian-date conversions every epoch in this package is stated in. A
+caller that keeps records or compares their epochs against its own clock uses
+these rather than a second convention that agrees to the second and not the
+millisecond. What they assume:
+
+- A naive ``datetime`` is read as UTC; an aware one is converted to UTC first,
+  so ``2023-02-24 14:00+02:00`` and ``2023-02-24 12:00`` both give ``2460000.0``.
+- :func:`~satchecker_client.jd_to_datetime` returns a naive UTC ``datetime``.
+- Days are 86 400 seconds; leap seconds are not modelled, which is also how
+  TLE and OMM epochs are written.
+- A Julian Date is a double, and near 2.46e6 adjacent doubles are about 40 µs
+  apart, so timestamps a few microseconds apart can map to one value and a
+  round trip is exact to well under a millisecond, not to the microsecond.
+
+.. autofunction:: satchecker_client.datetime_to_jd
+
+.. autofunction:: satchecker_client.jd_to_datetime
 
 TLE parsing
 -----------
@@ -42,6 +71,13 @@ TLE parsing
 
 Cache
 -----
+
+Per-satellite record storage and catalogue-search snapshots.
+:func:`~satchecker_client.cache.read_orbit_file` reads one explicitly named
+orbit table and raises, rather than returning an empty frame, for input it
+cannot read — a table that is genuinely empty still reads as an empty frame;
+:func:`~satchecker_client.cache.read_legacy_tle_records` scans a directory and
+skips what it cannot use.
 
 .. automodule:: satchecker_client.cache
     :members:
