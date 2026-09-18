@@ -466,12 +466,290 @@ Search files use their own schema version and are only ever opened by name, so
 versions of this package that predate them, reading the same directory, never
 see them.
 
+## Choosing which record to use
+
+Everything above answers one question at a time. Choosing the record an
+observation gets means holding several answers at once — a file you supplied
+against the cache against two archives, an age ceiling that says what is
+acceptable against a reuse threshold that says what is worth a request, and a
+failed request that must never read as a satellite the archives do not have.
+{func}`~satchecker_client.resolve.resolve_orbits` is that machinery, and it is
+optional: nothing else in the package goes through it.
+
+It has no policy of its own. Every selection and acquisition rule is a required
+keyword with no default, because a default here would be one application's
+policy installed in a library every other one also installs:
+
+```python
+import satchecker_client as sc
+
+epoch_jd = 2460800.5
+cache = sc.TextOrbitCache("~/.cache/my-app/orbits")
+
+resolution = sc.resolve_orbits(
+    [25544, 48274],
+    epoch_jd,
+    source_order=("extra", "remote"),      # your files first, then cache+service
+    remote_max_age_days=3.0,               # hard ceiling on a remote record
+    cache_reuse_max_age_days=1.0,          # closer than this, do not ask again
+    extra_orbit_max_age_days=None,         # your records are yours: no ceiling
+    replacement="strictly_fresher",        # only a closer record displaces one held
+    offline=False,
+    allow_missing_checksum=False,
+    strict_response=True,
+    endpoints=sc.nearest_endpoints_for(epoch_jd),
+    fallback=True,                         # try the other archive when needed
+    max_workers=sc.MAX_WORKERS,
+    cache=cache,                           # or None for no cache at all
+    extra_records=sc.read_extra_orbit_dir("my_orbits/"),
+)
+
+frame = resolution.frame()   # one row per accepted satellite, in requested order
+```
+
+Those ages, the source order and the replacement rule are the two consuming
+applications' current ones; `strict_response` is not, and is shown here at its
+stricter setting — tab-sim asks for it, tabascal currently takes the lenient
+reading the endpoints have always had. None of these are recommendations and
+none are defaults; pick your own and state them.
+
+Each requested ID is resolved independently, through `source_order` in turn:
+`"extra"` is the frame you passed as `extra_records`, `"remote"` is the cache and
+the service together. The first group that produces an acceptable record for an
+ID wins, and the later ones are not consulted *for that ID* — so an acceptable
+record of your own means the service is never asked about that satellite. Within
+a group the nearest record to the observation epoch wins, measured from the
+record's own epoch: a TLE's line 1, an OMM's checked `EPOCH`, never a provider's
+`epoch` field or a saved `EPOCH_JD` beside it.
+
+### What comes back
+
+{class}`~satchecker_client.resolve.OrbitResolution` is evidence, not a verdict —
+it raises nothing for a satellite it could not resolve, and
+`resolution.missing` is in requested order:
+
+```python
+for norad_id in resolution.missing:
+    if norad_id in resolution.service_errors:
+        raise resolution.service_errors[norad_id]      # we could not find out
+    rejected = resolution.rejected.get(norad_id)
+    if rejected is not None and rejected.reason_code == "over_age":
+        print(f"{norad_id}: nearest record was {rejected.age_days:.2f} d away, "
+              f"over {rejected.limit_name}={rejected.ceiling_days}")
+    elif rejected is not None:
+        print(f"{norad_id}: the record found for it was unusable "
+              f"({rejected.reason_code})")
+    if norad_id in resolution.unavailable:
+        print(f"{norad_id}: {resolution.unavailable[norad_id]}")
+```
+
+A rejection that is not an age rejection has no epoch to report: `age_days`,
+`offset_days`, `ceiling_days` and `limit_name` are all `None` on it, because
+nothing about the record could be measured. What it carries instead is `error`,
+the exception that refused *that* candidate, so the diagnostic is at hand
+without re-reading the events. It is `None` on an age rejection: nothing
+refused that record, it was read, measured and found too far away. Only one
+rejection per satellite is kept — the nearest measurable one, and until there is
+one, the first unusable candidate — so for a satellite with two unusable
+candidates the last `candidate_rejected` event describes the other candidate;
+`error` describes this one. And the two maps are not
+alternatives — an ID can appear in neither, either, or both — so each is asked
+about separately.
+
+Four outcomes are kept apart, because flattening them is how a service failure
+becomes a plausible-looking run with a satellite quietly missing from it:
+
+| Outcome | Where it is | What it means |
+|---|---|---|
+| Accepted | `resolved[id]` — a {class}`~satchecker_client.resolve.ResolvedOrbit` | The record, its `source` (`extra`, `cache`, `service`), the `endpoint` that answered, and the signed `offset_days` that chose it |
+| Refused on age | `rejected[id]` — a {class}`~satchecker_client.resolve.RejectedOrbit` | A record was found and judged; `reason_code`, `ceiling_days` and the `limit_name` that refused it |
+| Request failed | `service_errors[id]` | The service was asked and did not answer usably. Not a record, and not an absence |
+| Nothing found | `unavailable[id]` | `absent` only when every endpoint the fallback policy needed answered successfully with nothing; otherwise `offline`, `not_attempted` or `invalid_local` |
+
+An ID refused on age, one with a service failure, and one whose fallback an
+outage prevented are deliberately *not* in `unavailable`: each already has its
+own evidence, and calling any of them absent would report a satellite the
+archives do have as one they do not. Two classifications do sit alongside an age
+rejection, because each says something the rejection does not: `offline` — the
+ceiling refused the record that was held, and nothing was allowed to look for a
+closer one — and `not_attempted`, when `source_order` named no remote group, so
+nothing was ever going to look. `refresh_errors` holds the failures of IDs that stayed resolved
+anyway — never fatal, since the run has a record, but the run is not quite the
+one that was asked for and this is the only place that says so.
+
+`attempts[id]` lists one
+{class}`~satchecker_client.resolve.EndpointAttempt` per configured endpoint, in
+order, with `not_sent` for one that was never asked — a cache hit is therefore
+a row of `not_sent`s. An ID that never reached the remote group at all, such as
+one an earlier source group resolved, has no `attempts` entry: nothing was
+decided about asking. `events` is the same facts as they happened —
+{class}`~satchecker_client.resolve.ResolutionEvent`, each with a stable `code`,
+the IDs it concerns, and the source, endpoint, path or error behind it. Pass
+`on_event=` to receive them as they occur, from the thread that called
+`resolve_orbits` and never from a worker; an exception your callback raises is
+yours and propagates out of the call. The result keeps the events either way, so
+an application that installs no callback is not reading a different run. The
+codes are `candidate_rejected`, `source_selected`,
+`cache_hit`, `refresh_required`, `refresh_skipped`, `batch_started`,
+`endpoint_fallback`, `outage`, `incumbent_retained`, `refresh_failed`,
+`unverified_accepted`, `unverified_not_cached` and `cache_write_failed`. The
+wording around them is yours; `log=` remains the low-level diagnostic stream the
+cache, the batch and the cache writes already write to.
+
+`resolution.frame()` derives the orbital elements here, from each accepted
+record, overwriting any element columns a legacy file arrived with rather than
+duplicating them; `records()` hands back independent copies, and neither touches
+the frame you passed in.
+
+### Reuse is not acceptance
+
+The two cache settings answer different questions, and collapsing them is a
+quiet way to lose a satellite. `remote_max_age_days` is what an acceptable
+record is; `cache_reuse_max_age_days` is when a record already held is close
+enough that a request is not worth making. A cached record only suppresses the
+request if it satisfies *both* — otherwise `cache_reuse_max_age_days=None` would
+make every cached record a hit, including ones the hard ceiling then refuses, so
+the satellite would never be fetched at all. A reuse threshold above the hard
+ceiling is refused outright for the same reason.
+
+An acceptable-but-stale cached record stays in place while the service is asked
+for something closer. That is what `replacement` decides:
+`"strictly_fresher"` keeps it unless the answer is strictly closer, which makes
+a refresh safe by construction — a staler, equally distant or failed answer
+leaves the run with what it already had. `"prefer_service"` takes any in-ceiling
+answer instead. Neither relaxes the ceiling.
+
+### Fallback is not a search across both archives
+
+Neither endpoint says when it has nothing near the epoch you asked for, so
+`fallback=True` gives an ID one more request when the previous endpoint supplied
+no acceptable in-ceiling record — an empty answer, an over-age one, or a failed
+one. What it does *not* do is ask the other archive because the record already
+held is closer: an in-ceiling answer is an answer, and asking anyway would make
+this a global-nearest search across both archives, which is a different
+acquisition policy and a different number of requests to a free public service.
+
+An outage stops acquisition entirely, whatever `fallback` says, and the IDs whose
+fallback it prevented stay unknown rather than absent — including ones that had
+already answered empty at an earlier endpoint.
+
+### Offline
+
+`offline=True` forbids every request without relaxing any ceiling: offline is
+about what can be reached, not about what an acceptable record is. A cached
+record outside `remote_max_age_days` is refused exactly as it would be online,
+and its ID is reported as `offline` rather than absent, because nothing asked.
+
+### Your own files: strict or forgiving
+
+The resolver never opens a directory. You read your records and pass the frame,
+which keeps the ingestion contract yours:
+
+- {func}`~satchecker_client.resolve.read_extra_orbit_dir` reads every `*.json`
+  in a directory through {func}`~satchecker_client.cache.read_orbit_file` and
+  raises {class}`~satchecker_client.resolve.OrbitInputError` — naming the file,
+  the row for a row-level failure, and the `code` for which kind of failure it
+  was — for anything it cannot read, including a table that is not an orbit
+  table (`unreadable`) and a row whose `NORAD_CAT_ID` is unusable (`identity`).
+  Every row's identity is checked, including rows you did not ask for: a
+  malformed identity that survives to a wanted-ID filter simply vanishes from
+  it, and the service then answers for the satellite the file was meant to
+  supply. A missing path is an empty frame; whether that deserves a warning is
+  yours to judge, since you know whether the path came from a default or from a
+  user.
+- {func}`~satchecker_client.cache.read_legacy_tle_records` is the forgiving
+  scan, unchanged: it skips what it cannot use and returns the rest.
+
+Either frame is acceptable as `extra_records`. Reading is not accepting: neither
+reader applies a checksum policy, and the resolver applies
+`allow_missing_checksum` identically to a file, the cache and the service —
+a default that rejected an unverifiable line remotely and accepted it from a
+file would advertise a strictness whose workaround is to save the record once.
+Accepted records carry their provenance, which never improves; records nothing
+has verified are used by the run and kept out of the shared cache, which every
+application reading it also reads.
+
+### Freezing what a run used
+
+```python
+ids_path, records_path = sc.save_replay_orbits(
+    "run_42/input_data", resolution.norad_ids(), resolution.records()
+)
+
+norad_ids, records = sc.load_replay_orbits(
+    "run_42/input_data", allow_missing_checksum=False
+)
+```
+
+{func}`~satchecker_client.replay.save_replay_orbits` writes
+{data}`~satchecker_client.replay.REPLAY_IDS_FILE` and
+{data}`~satchecker_client.replay.REPLAY_RECORDS_FILE`, and
+{func}`~satchecker_client.replay.load_replay_orbits` reads those two files and
+*nothing else* — no directory scan, no cache, no request, and no reselection by
+age. Saved records are used however far their epochs are from the observation,
+because that is what makes them the same records. Anything short of exact stops:
+a record for a satellite the ID file does not list, a listed satellite with no
+record, two records for one, an identity that does not read. The two files are
+validated and serialised before either is opened, so a failure does not leave a
+half-written pair, though writing them one after the other is not a transaction.
+
+Each of those refusals is an
+{class}`~satchecker_client.resolve.OrbitInputError` carrying a `code`, so what
+kind of failure it was does not have to be read out of the message:
+`unreadable` for a file that is missing, undecodable, not JSON or not an orbit
+table; `structure` for two files that do not describe one selection — a listed
+satellite with no record, a record for an unlisted one, a satellite listed or
+recorded twice; `identity` for a row or line whose NORAD identity is missing,
+malformed, or not the one it is filed under; `invalid_record` for a record no
+policy accepts, such as a corrupt checksum or an unrecognised provenance claim;
+and `checksum_policy` for the one refusal `allow_missing_checksum=True` would
+lift, decided by re-validating that record permissively rather than by its
+wording. `code` is `None` only on an error raised without one. It is worth
+branching on: a satellite listed twice and a record saved without its checksum
+digits read alike as prose and have nothing in common as remedies.
+
+{func}`~satchecker_client.replay.save_orbits_for_reuse` writes just the table,
+to a path you name, and permits several rows for one satellite — a run may use
+one twice. The frozen pair does not: matching one saved record to each saved ID
+would otherwise be a choice, which is the reselection a replay exists to
+prevent.
+
+The table is an ordinary explicit orbit table — the shape both
+{func}`~satchecker_client.cache.read_orbit_file` and the forgiving directory
+scan read, never a managed cache envelope. It carries what reads back as the
+same record: a TLE's two lines and its checksum provenance, an OMM's epoch and
+its seven elements, plus whatever provider and fetch metadata the record
+arrived with. `EPOCH_JD` and `SEMIMAJOR_AXIS` are not written, since they are
+recomputed on every read and a second copy on disk is one a later edit can
+silently contradict.
+
+What is exact, and what is not:
+
+- Numbers are written through the standard library's JSON encoder, which writes
+  a float as `repr` does — the shortest text that reads back as the same double,
+  `-0.0` and subnormals included. `DataFrame.to_json` does not: at its default
+  precision it rounds an element outright, and even at its maximum it writes
+  `0.0066635` as `0.006663499999999999`, a different double and so a different
+  trajectory.
+- `allow_missing_checksum` is required on every load, because provenance
+  survives the save: a record accepted without its checksum digits needs the
+  opt-in again, whatever its lines carry now. A status this package does not
+  recognise, and a checksum that is present and wrong, are refused either way.
+- A table written by something that formatted its floats — an older consumer's
+  `used_orbits_*.json`, say — reads back fine, but the precision it lost before
+  it was saved is gone and nothing here invents it.
+- What is frozen is the orbital *input*. Reproducing a previous run's
+  trajectories also assumes the same observation, the same other inputs and the
+  same numerical environment, none of which this package sees.
+
 ## What stays with the caller
 
-This package takes no view on *which* record an application should use. Source
-precedence, how stale a record may be before it is refused, whether a stale
-answer from the primary archive should trigger a request to the other one, and
-whether missing coverage is fatal are application policy. TABASCAL, the
-original consumer, documents its policy — nearest-record selection, age
-ceilings, cache-reuse thresholds, and complete-coverage enforcement — in its
-own [orbit records guide](https://tabascal.readthedocs.io/en/latest/orbits.html).
+This package still takes no view on *which* record an application should use.
+{func}`~satchecker_client.resolve.resolve_orbits` executes the rules it is
+given and has none of its own: source precedence, the age ceilings, the reuse
+threshold, whether to fall back to the other archive, and whether missing
+coverage is fatal are all the caller's, and so is every sentence a user reads
+about them. TABASCAL, the original consumer, documents its policy —
+nearest-record selection, age ceilings, cache-reuse thresholds, and
+complete-coverage enforcement — in its own
+[orbit records guide](https://tabascal.readthedocs.io/en/latest/orbits.html).

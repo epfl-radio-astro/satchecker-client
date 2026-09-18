@@ -69,6 +69,42 @@ TLE parsing
 .. automodule:: satchecker_client.tle_parse
     :members:
 
+Resolve
+-------
+
+Optional, and the only part of the package that decides *which* record an
+observation gets — under rules the caller states, every one of them a required
+keyword with no default. :func:`~satchecker_client.resolve.resolve_orbits`
+returns an :class:`~satchecker_client.resolve.OrbitResolution`: accepted records
+with the source and signed offset that chose them
+(:class:`~satchecker_client.resolve.ResolvedOrbit`), the nearest near-miss with
+the parameter that refused it — or, for an unusable record, the exception that
+did (:class:`~satchecker_client.resolve.RejectedOrbit`), one
+:class:`~satchecker_client.resolve.EndpointAttempt` per configured endpoint for
+every satellite that entered the remote group, the request failures, the
+satellites nothing was found for and why, and a
+:class:`~satchecker_client.resolve.ResolutionEvent` for each decision. Of its
+own it raises only for a malformed rule or identity — a satellite it could not
+resolve is evidence in the result, not an exception — though an ``on_event``
+callback's own exception propagates through it;
+:class:`~satchecker_client.resolve.OrbitInputError` comes from the strict
+directory reader beside it, and from the replay loader. Its ``code`` is one of
+the ``INPUT_*`` categories below, so a caller can tell a file it could not read
+from a record its own checksum policy refused without matching the message.
+
+.. automodule:: satchecker_client.resolve
+    :members:
+
+Replay
+------
+
+Writing the orbital inputs a run used, and reading them back exactly. The two
+files are read as a pair and as nothing else: no directory scan, no cache, no
+request, no reselection by age.
+
+.. automodule:: satchecker_client.replay
+    :members:
+
 Cache
 -----
 
