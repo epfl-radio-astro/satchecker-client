@@ -68,6 +68,7 @@ docs = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
 [project.urls]
 Documentation = "https://satchecker-client.readthedocs.io/"
 Repository = "https://github.com/epfl-radio-astro/satchecker-client"
+Changelog = "https://github.com/epfl-radio-astro/satchecker-client/blob/main/CHANGELOG.md"
 Issues = "https://github.com/epfl-radio-astro/satchecker-client/issues"
 "SatChecker service" = "https://satchecker.cps.iau.org/"
 
