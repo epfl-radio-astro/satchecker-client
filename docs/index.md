@@ -52,6 +52,7 @@ Pure Python, depending only on pandas and numpy; Python 3.10–3.14.
 
 usage
 api
+changelog
 readthedocs
 ```
 

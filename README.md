@@ -105,6 +105,9 @@ pytest
 The tests block outbound network access via an autouse fixture, so the suite
 runs offline and never touches the live service.
 
+Releases are listed in [CHANGELOG.md](https://github.com/epfl-radio-astro/satchecker-client/blob/main/CHANGELOG.md); a change that a user
+would notice goes under *Unreleased* in the same pull request that makes it.
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE). Extracted from [TABASCAL][tabascal], which is
